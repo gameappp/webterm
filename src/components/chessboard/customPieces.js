@@ -1,17 +1,17 @@
 export const customPieces = () => {
   const pieceImages = {
-    wP: "/pieces/white-pawn.png",
-    wR: "/pieces/white-rook.png",
-    wN: "/pieces/white-knight.png",
-    wB: "/pieces/white-bishop.png",
-    wQ: "/pieces/white-queen.png",
-    wK: "/pieces/white-king.png",
-    bP: "/pieces/black-pawn.png",
-    bR: "/pieces/black-rook.png",
-    bN: "/pieces/black-knight.png",
-    bB: "/pieces/black-bishop.png",
-    bQ: "/pieces/black-queen.png",
-    bK: "/pieces/black-king.png",
+    wP: "/pieces/white-pawn.svg",
+    wR: "/pieces/white-rook.svg",
+    wN: "/pieces/white-knight.svg",
+    wB: "/pieces/white-bishop.svg",
+    wQ: "/pieces/white-queen.svg",
+    wK: "/pieces/white-king.svg",
+    bP: "/pieces/black-pawn.svg",
+    bR: "/pieces/black-rook.svg",
+    bN: "/pieces/black-knight.svg",
+    bB: "/pieces/black-bishop.svg",
+    bQ: "/pieces/black-queen.svg",
+    bK: "/pieces/black-king.svg",
   };
 
   const pieces = {};
