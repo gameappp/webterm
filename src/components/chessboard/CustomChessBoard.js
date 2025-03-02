@@ -83,7 +83,7 @@ const CustomChessBoard = () => {
         }}
         customPieces={customPieces()}
         customDarkSquareStyle={{ backgroundColor: "#373855" }}
-        customLightSquareStyle={{ backgroundColor: "#f3f4f6" }}
+        customLightSquareStyle={{ backgroundColor: "#d1d5db" }}
         showBoardNotation={false}
         customBoardStyle={{
           height: "fit-content",
