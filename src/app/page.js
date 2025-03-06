@@ -1,5 +1,5 @@
 import Background from "@/components/chessboard/Background";
-import Profile from "@/components/home/Profile";
+import Header from "@/components/header/Header";
 import React from "react";
 
 const page = () => {
@@ -7,7 +7,7 @@ const page = () => {
     <div className="relative max-w-[450px] flex flex-col gap-5 w-full h-screen bg-blackColor overflow-hidden p-6">
       <Background />
 
-      <Profile />
+      <Header />
     </div>
   );
 };

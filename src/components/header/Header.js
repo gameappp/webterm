@@ -19,7 +19,7 @@ export const ranks = [
 // z-index: 1;
 // filter: blur(60px);
 
-const Profile = () => {
+const Header = () => {
   const userRank = ranks[0];
 
   return (
@@ -68,4 +68,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default Header;
