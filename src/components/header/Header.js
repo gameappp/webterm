@@ -1,5 +1,6 @@
 import { toFarsiNumber } from "@/helper/helper";
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
 
 export const ranks = [
@@ -43,7 +44,10 @@ const Header = () => {
           </div>
         </div>
 
-        <button className="w-fit flex justify-center items-center gap-1 px-3 h-8 rounded-xl text-xs bg-blueColor bg-opacity-15 text-blueColor">
+        <Link
+          href={"/auth"}
+          className="w-fit flex justify-center items-center gap-1 px-3 h-8 rounded-xl text-xs bg-blueColor bg-opacity-15 text-blueColor"
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width={18}
@@ -60,7 +64,7 @@ const Header = () => {
           </svg>
 
           <span>پروفایل کاربری</span>
-        </button>
+        </Link>
       </div>
 
       <div className="w-full px-3 flex items-center justify-between h-12 bg-secondaryDarkTheme rounded-2xl">
