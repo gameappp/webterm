@@ -1,11 +1,11 @@
 import axios from "axios";
 
-export const baseURL = "https://api.markazyab.ir/api";
-export const siteURL = "https://api.markazyab.ir";
+export const baseURL = "http://localhost:3000/api";
+export const siteURL = "http://localhost:3000";
 
 // axios config
 const servicesApi = axios.create({
-  baseURL: "https://api.markazyab.ir/api",
+  baseURL: "http://localhost:3000/api",
   withCredentials: false,
   timeout: 60000000,
   headers: {

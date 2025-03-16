@@ -1,10 +1,11 @@
 "use client";
 
+import { getData, postData } from "@/services/API";
 import { Button, Input, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 const page = () => {
@@ -32,6 +33,24 @@ const page = () => {
   });
 
   const showPasswordToggle = () => setShowPassword(!showPassword);
+
+  useEffect(() => {
+    getData("/user/get-info", {})
+      .then((res) => {})
+      .catch((err) => {
+        setLoading(false);
+      });
+  }, []);
+
+  const userRegisterHandler = (data) => {
+    setLoading(true);
+
+    postData("/user/register", { ...data })
+      .then((res) => {})
+      .catch((err) => {
+        setLoading(false);
+      });
+  };
 
   return (
     <div className="relative max-w-[450px] flex flex-col items-center justify-center gap-5 w-full min-h-screen bg-primaryDarkTheme overflow-hidden">
@@ -115,9 +134,9 @@ const page = () => {
                 inputWrapper:
                   "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
               }}
-              isInvalid={errors.nickName ? true : false}
-              errorMessage={errors?.nickName?.message}
-              {...register("nickName", {
+              isInvalid={errors.userName ? true : false}
+              errorMessage={errors?.userName?.message}
+              {...register("userName", {
                 validate: {
                   isRequired: (value) =>
                     value.length > 0 || "نام کاربری اجباری میباشد",
@@ -127,7 +146,14 @@ const page = () => {
 
             <Input
               type="text"
-              label="شماره تلفن"
+              label={
+                <>
+                  <span>شماره تلفن</span>
+                  <span className="text-[11px] text-gray-400 pr-1">
+                    (اختیاری)
+                  </span>
+                </>
+              }
               placeholder="شماره تلفن خود را وارد کنید"
               variant="bordered"
               labelPlacement="outside"
@@ -226,6 +252,7 @@ const page = () => {
 
             <Button
               isLoading={loading}
+              onClick={handleSubmit(userRegisterHandler)}
               className="mt-2 !bg-blueColor text-white !shadow-none"
             >
               ثبت نام و ورود
