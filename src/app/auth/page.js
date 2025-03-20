@@ -1,16 +1,19 @@
 "use client";
 
 import { getData, postData } from "@/services/API";
-import { Button, Input, Spinner } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import toast, { Toaster } from "react-hot-toast";
 
 const page = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -35,18 +38,29 @@ const page = () => {
   const showPasswordToggle = () => setShowPassword(!showPassword);
 
   useEffect(() => {
-    getData("/user/get-info", {})
-      .then((res) => {})
-      .catch((err) => {
-        setLoading(false);
-      });
+    // getData("/user/get-info", {})
+    //   .then((res) => {})
+    //   .catch((err) => {
+    //     setLoading(false);
+    //   });
   }, []);
 
   const userRegisterHandler = (data) => {
     setLoading(true);
 
     postData("/user/register", { ...data })
-      .then((res) => {})
+      .then((res) => {
+        toast.success("ثبت نام با موفقیت انجام شد", {
+          style: {
+            borderRadius: "10px",
+            background: "#040e1c",
+            color: "#fff",
+            fontSize: "14px",
+          },
+        });
+
+        router.push("/");
+      })
       .catch((err) => {
         setLoading(false);
       });
@@ -54,6 +68,7 @@ const page = () => {
 
   return (
     <div className="relative max-w-[450px] flex flex-col items-center justify-center gap-5 w-full min-h-screen bg-primaryDarkTheme overflow-hidden">
+      <Toaster />
       <div className="w-full overflow-hidden absolute top-0">
         {/* bottom */}
         <div className="absolute bottom-0 bottom-overly w-full h-full"></div>

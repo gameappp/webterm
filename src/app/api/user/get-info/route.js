@@ -7,7 +7,7 @@ export async function GET(req) {
   try {
     await connectDB();
 
-    // دریافت توکن از کوکی
+    // get user token
     const token = req.cookies.get("token")?.value;
 
     if (!token) {
