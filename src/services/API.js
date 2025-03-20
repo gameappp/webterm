@@ -19,7 +19,7 @@ const postData = async (
   data,
   onUploadProgress,
   headers,
-  withToken = true
+  withToken = false
 ) => {
   if (withToken) {
     let token = localStorage.getItem("token");

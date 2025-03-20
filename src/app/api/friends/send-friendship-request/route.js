@@ -30,7 +30,10 @@ export async function POST(request) {
     // save requet in db
     await FriendRequest.create({ sender: senderId, receiver: receiverId });
 
-    return NextResponse.json({ message: "درخواست دوستی ارسال شد!" });
+    return NextResponse.json(
+      { message: "درخواست دوستی ارسال شد!" },
+      { status: 200 }
+    );
   } catch (error) {
     return NextResponse.json({ error: "مشکلی رخ داده است." }, { status: 500 });
   }

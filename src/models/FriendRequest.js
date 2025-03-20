@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 const FriendRequestSchema = new mongoose.Schema({
   sender: {
     type: mongoose.Schema.Types.ObjectId,

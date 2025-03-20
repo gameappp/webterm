@@ -14,8 +14,6 @@ const SearchFriends = () => {
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
 
-  console.log(user);
-
   const onChangeSearchHandler = (e) => {
     const value = e.target.value;
     setSearch(value);
@@ -94,7 +92,7 @@ const SearchFriends = () => {
 
         <div className="w-full flex flex-col gap-2">
           {users.map((item) => (
-            <UserItem key={item._id} data={item} />
+            <UserItem key={item._id} userInfo={item} />
           ))}
         </div>
       </div>
