@@ -95,7 +95,7 @@ const Navbar = () => {
     {
       id: 4,
       name: "برترین‌ها",
-      link: "/boards",
+      link: "/bests",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -120,7 +120,7 @@ const Navbar = () => {
       {menu.map((item) => (
         <Link
           key={item.id}
-          href={"/"}
+          href={item.link}
           className={`flex flex-col gap-1 text-xs items-center ${
             item.link === route ? "text-blueColor scale-110" : ""
           } hover:text-blueColor transition-all duration-300`}
