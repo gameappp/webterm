@@ -32,7 +32,6 @@ export async function POST(request) {
 
     return NextResponse.json({ message: "درخواست دوستی ارسال شد!" });
   } catch (error) {
-    console.error("خطا در ثبت‌نام:", error);
     return NextResponse.json({ error: "مشکلی رخ داده است." }, { status: 500 });
   }
 }
