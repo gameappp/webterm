@@ -62,6 +62,9 @@ export async function POST(req) {
       {
         message: "جستجو انجام شد",
         users: usersWithFriendshipStatus.filter(Boolean), // remove null data
+        result: usersWithFriendshipStatus.filter(Boolean).length
+          ? "result"
+          : "empty",
       },
       { status: 200 }
     );

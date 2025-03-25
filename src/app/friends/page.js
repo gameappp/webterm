@@ -20,6 +20,13 @@ const page = () => {
       </div>
 
       <SearchFriends />
+
+      <div className="w-full flex flex-col gap-3 -mt-1.5">
+        <h2 className="bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
+          دوستان شما
+        </h2>
+
+      </div>
     </div>
   );
 };

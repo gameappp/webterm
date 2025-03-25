@@ -30,7 +30,7 @@ const UserItem = ({ userInfo }) => {
   };
 
   return (
-    <div className="w-full h-14 px-4 rounded-2xl bg-secondaryDarkTheme flex items-center justify-between">
+    <div className="w-full h-14 px-4 rounded-2xl bg-primaryLightTheme flex items-center justify-between">
       <div className="flex items-center gap-2">
         <Image
           src={"/avatar.png"}
