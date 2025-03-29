@@ -37,6 +37,7 @@ const Header = () => {
             width={100}
             height={100}
             className="size-12 object-cover rounded-2xl"
+            alt={`${user?.nickName} - پروفایل`}
           />
 
           <div className="flex flex-col gap-1">
@@ -85,6 +86,7 @@ const Header = () => {
               width={100}
               height={100}
               className="w-8 left-0 absolute top-2/4 -translate-y-2/4 z-[2]"
+              alt="user rank"
             />
 
             <Image
@@ -92,6 +94,7 @@ const Header = () => {
               width={200}
               height={200}
               className="min-w-10 absolute -top-0 -left-0.5 z-[1] blur opacity-50"
+              alt="user rank"
             />
           </div>
         </div>
