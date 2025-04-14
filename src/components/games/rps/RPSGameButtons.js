@@ -18,9 +18,11 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
   const [gameResult, setGameResult] = useState(null);
   const [selectedMove, setSelectedMove] = useState({});
   const [turn, setTurn] = useState(roomInfo?.host?._id === user._id);
+  const [resultMessage, setResultMessage] = useState(null);
   const [playersMoves, setPlayersMoves] = useState({
     me: "/rps/hand.svg",
     opponent: "/rps/hand.svg",
+    key: 0,
   });
   const [points, setPoints] = useState({
     me: 0,
@@ -66,39 +68,71 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
     });
 
     socket.on("gameOver", ({ result, winner, gameMoves }) => {
-      setGameResult({ result, winner, gameMoves });
-
       setSelectedMove({});
 
-      // set points
+      // set points & result message
       if (winner === user._id) {
         setPoints((prev) => ({ ...prev, me: prev.me + 10 }));
+
+        setResultMessage("win");
       } else if (winner === roomInfo.opponent._id) {
         setPoints((prev) => ({ ...prev, opponent: prev.opponent + 10 }));
+
+        setResultMessage("lose");
+      } else {
+        setResultMessage("draw");
       }
-      console.log(gameMoves[user._id]);
+
+      setTimeout(() => {
+        setResultMessage(null);
+      }, 4000);
+
       // set players moves
-      setPlayersMoves({
+      setPlayersMoves((prev) => ({
         me: movesHand[gameMoves[user._id]],
         opponent: movesHand[gameMoves[roomInfo.opponent._id]],
-      });
+        key: prev.key + 1,
+      }));
     });
+
+    // finish the game
+    if (points.me === 100 || points.opponent === 100) {
+      if (points.me === 100) {
+        setGameResult("you win");
+      } else {
+        setGameResult("you lose");
+      }
+    }
 
     return () => {
       socket.off();
     };
-  }, []);
+  }, [points]);
 
   const userMoveHandler = (move) => {
     setSelectedMove(move);
     socket.emit("makeMove", { roomId, move: move.name, userId: user._id });
   };
 
-  console.log(gameResult);
-  console.log(playersMoves);
-
   return (
     <div className="w-full h-full relative max-w-[450px]">
+      {/* game result message */}
+      <div
+        className={`fixed ${
+          resultMessage ? "opacity-100 visible" : "opacity-0 invisible"
+        } w-full max-w-[450px] h-full flex justify-center items-center text-2xl font-black z-[60] top-0 right-0 bottom-0 bg-black bg-opacity-75 backdrop-blur-sm transition-all duration-300`}
+      >
+        {resultMessage === "win" ? (
+          <span className="text-success">آفرین! این دست و بردی</span>
+        ) : resultMessage === "lose" ? (
+          <span className="text-red-600">ای وای! این دست و باختی</span>
+        ) : resultMessage === "draw" ? (
+          <span className="text-gray-200">این دست مساوی شد!</span>
+        ) : (
+          ""
+        )}
+      </div>
+
       <span
         className={`p-2 text-xs ${
           turn ? "bg-success text-success" : "bg-red-600 text-red-600"
@@ -151,6 +185,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
           height={800}
           className="w-full max-w-20 absolute -bottom-20 right-0 slide-up"
           alt="hand"
+          key={playersMoves.key}
         />
       </div>
 
@@ -162,6 +197,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
           height={800}
           className="w-full max-w-20 absolute -top-20 left-0 -scale-x-100 -scale-y-100 slide-down"
           alt="hand"
+          key={playersMoves.key}
         />
       </div>
 
@@ -217,14 +253,14 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
           {/* me */}
           <div
             style={{ height: `${points.opponent}%` }}
-            className="w-full bg-redColor transition-all duration-300"
+            className="w-full bg-redColor transition-all duration-300 rounded-b-full"
           ></div>
 
           {/* opponent */}
           <div className="w-full h-full flex items-end">
             <div
               style={{ height: `${points.me}%` }}
-              className="w-full bg-blueColor transition-all duration-300"
+              className="w-full bg-blueColor transition-all duration-300 rounded-t-full"
             ></div>
           </div>
         </div>
