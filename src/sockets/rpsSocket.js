@@ -1,12 +1,14 @@
 const { Server } = require("socket.io");
-const axios = require("axios");
-const { baseURL } = require("../services/API");
 
 let io;
 const onlineUsers = {}; // online users
 let waitingPlayer = null;
 const gameMoves = {};
 const playerTurn = {}; // نگهداری نوبت هر بازیکن
+const baseURL =
+  process.env.NODE_ENV === "development"
+    ? "http://localhost:3000"
+    : "https://chess-production-9ba7.up.railway.app";
 
 const rpsSocket = (httpServer) => {
   if (!io) {
@@ -42,18 +44,15 @@ const handleFindGame = async (socket) => {
     }-${Date.now()}`;
 
     try {
-      const createRoomRes = await fetch(
-        `${baseURL}/api/rps/create-room`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId,
-            player1: waitingPlayer.userId,
-            player2: socket.userId,
-          }),
-        }
-      );
+      const createRoomRes = await fetch(`${baseURL}/api/rps/create-room`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId,
+          player1: waitingPlayer.userId,
+          player2: socket.userId,
+        }),
+      });
 
       if (createRoomRes.ok) {
         // جوین کردن سوکت‌ها به اتاق
