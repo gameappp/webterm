@@ -50,6 +50,12 @@ const RockPaperScissors = ({ user }) => {
     socket.emit("findGame", { userId: user._id });
   };
 
+  const cancelGameFindingHandler = () => {
+    setLoading(false);
+
+    socket.emit("disconnect");
+  };
+
   return (
     <>
       <Toaster />
@@ -64,7 +70,10 @@ const RockPaperScissors = ({ user }) => {
             }}
           />
 
-          <button className="bg-red-600 bg-opacity-15 text-red-600 text-sm px-3 py-2 rounded-xl">
+          <button
+            onClick={cancelGameFindingHandler}
+            className="bg-red-600 bg-opacity-15 text-red-600 text-sm px-3 py-2 rounded-xl"
+          >
             لغو بازی
           </button>
         </div>
