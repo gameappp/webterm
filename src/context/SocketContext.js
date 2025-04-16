@@ -10,7 +10,7 @@ const socket = io(siteURL);
 
 const SocketContext = ({ children, userInfo }) => {
   const { user } = userInfo;
-  const [onlineUsers, setOnlineUsers] = useState({});
+  const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
     socket.emit("userInfo", {
@@ -18,8 +18,6 @@ const SocketContext = ({ children, userInfo }) => {
       userName: user.userName,
       nickName: user.nickName,
     });
-
-    console.log(user);
 
     socket.on("onlineUsers", (users) => setOnlineUsers(users));
   }, []);

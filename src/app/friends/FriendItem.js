@@ -1,7 +1,10 @@
+import { SocketContextData } from "@/context/SocketContext";
 import Image from "next/image";
-import React from "react";
+import React, { useContext } from "react";
 
 const FriendItem = ({ userInfo }) => {
+  const { onlineUsers } = useContext(SocketContextData);
+
   return (
     <div className="w-full h-14 px-4 rounded-2xl bg-primaryLightTheme flex items-center justify-between">
       <div className="flex items-center gap-2">
