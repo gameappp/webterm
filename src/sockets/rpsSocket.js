@@ -5,10 +5,10 @@ const onlineUsers = {}; // online users
 let waitingPlayer = null;
 const gameMoves = {};
 const playerTurn = {}; // نگهداری نوبت هر بازیکن
-const baseURL =
-  process.env.NODE_ENV === "development"
-    ? "http://localhost:3000"
-    : "https://chess-production-9ba7.up.railway.app";
+const baseURL = "http://localhost:3000";
+// process.env.NODE_ENV === "development"
+//   ? "http://localhost:3000"
+//   : "https://chess-production-9ba7.up.railway.app";
 
 const rpsSocket = (httpServer) => {
   if (!io) {
@@ -44,6 +44,7 @@ const rpsSocket = (httpServer) => {
 // find opponent & create a room
 const handleFindGame = async (socket) => {
   if (waitingPlayer) {
+    console.log(waitingPlayer);
     const roomId = `room-${waitingPlayer.userId}-${
       socket.userId
     }-${Date.now()}`;
@@ -81,9 +82,10 @@ const handleFindGame = async (socket) => {
 
       waitingPlayer = null;
     } catch (error) {
-      console.error("❌ Error creating game room:", error);
+      console.error("❌ Error creating game room:");
     }
   } else {
+    console.log("waitingPlayer");
     waitingPlayer = socket;
     socket.emit("waiting");
   }

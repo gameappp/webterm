@@ -57,8 +57,6 @@ const RockPaperScissors = ({ user }) => {
     socket.emit("cancelGame");
   };
 
-  console.log(gameInfo);
-
   return (
     <>
       <Toaster />
@@ -86,7 +84,7 @@ const RockPaperScissors = ({ user }) => {
 
           {gameInfo.roomId && (
             <div className="flex flex-col items-center gap-16">
-              <div className="flex flex-col text-sm items-center gap-2 slide-up">
+              <div className="flex flex-col text-sm items-center gap-2 slide-up-2">
                 <Image
                   src={"/avatar.png"}
                   width={100}
@@ -109,7 +107,7 @@ const RockPaperScissors = ({ user }) => {
                   className="size-16 rounded-2xl"
                 />
 
-                <span>شهیاد کریمی</span>
+                <span>{gameInfo?.opponent?.nickName}</span>
               </div>
             </div>
           )}

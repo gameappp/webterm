@@ -1,7 +1,8 @@
 "use client";
 
 import { toFarsiNumber } from "@/helper/helper";
-import { siteURL } from "@/services/API";
+import { postData, siteURL } from "@/services/API";
+import { Button } from "@heroui/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -21,11 +22,14 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
   const [selectedMove, setSelectedMove] = useState({});
   const [turn, setTurn] = useState(roomInfo?.host?._id === user._id);
   const [resultMessage, setResultMessage] = useState(null);
-  const [playersMoves, setPlayersMoves] = useState({
+  const [saveResultLoading, setSaveResultLoading] = useState(false);
+  const [playersMoves, setPlayersMoves] = useState({});
+  const [playersMovesImage, setPlayersMovesImage] = useState({
     me: "/rps/hand.svg",
     opponent: "/rps/hand.svg",
     key: 0,
   });
+
   const [points, setPoints] = useState({
     me: 0,
     opponent: 0,
@@ -73,6 +77,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
 
     socket.on("gameOver", ({ result, winner, gameMoves }) => {
       setSelectedMove({});
+      setPlayersMoves(gameMoves);
 
       // set points & result message
       if (winner === user._id) {
@@ -92,7 +97,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
       }, 4000);
 
       // set players moves
-      setPlayersMoves((prev) => ({
+      setPlayersMovesImage((prev) => ({
         me: movesHand[gameMoves[user._id]],
         opponent: movesHand[gameMoves[roomInfo.opponent._id]],
         key: prev.key + 1,
@@ -102,21 +107,34 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
     // finish the game
     if (points.me === 100 || points.opponent === 100) {
       if (points.me === 100) {
+        // save game result
+        setSaveResultLoading(true);
+
+        postData("/rps/save-result", {
+          roomId,
+          winner: user._id,
+          moves: playersMoves,
+        })
+          .then(() => {
+            setSaveResultLoading(false);
+          })
+          .catch((err) => {
+            setSaveResultLoading(false);
+            toast.error(err?.response?.data?.error || "خطا هنگام ذخیره بازی", {
+              duration: 4000,
+              style: {
+                borderRadius: "10px",
+                background: "#040e1c",
+                color: "#fff",
+                fontSize: "14px",
+              },
+            });
+          });
+
         setGameResult("you win");
       } else {
         setGameResult("you lose");
       }
-
-      toast.success("درحال انتقال به صفحه اصلی...", {
-        duration: 4000,
-        style: {
-          borderRadius: "10px",
-          background: "#040e1c",
-          color: "#fff",
-          fontSize: "14px",
-        },
-      });
-      router.push("/");
     }
 
     return () => {
@@ -127,6 +145,20 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
   const userMoveHandler = (move) => {
     setSelectedMove(move);
     socket.emit("makeMove", { roomId, move: move.name, userId: user._id });
+  };
+
+  const backHomePageHandler = () => {
+    toast.success("درحال انتقال به صفحه اصلی...", {
+      duration: 4000,
+      style: {
+        borderRadius: "10px",
+        background: "#040e1c",
+        color: "#fff",
+        fontSize: "14px",
+      },
+    });
+
+    router.push("/");
   };
 
   return (
@@ -154,15 +186,36 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
       <div
         className={`fixed ${
           gameResult ? "opacity-100 visible" : "opacity-0 invisible"
-        } w-full max-w-[450px] h-full flex justify-center items-center text-2xl font-black z-[60] top-0 right-0 bottom-0 bg-black bg-opacity-75 transition-all duration-300`}
+        } w-full max-w-[450px] h-full flex flex-col gap-4 justify-center items-center z-[60] top-0 right-0 bottom-0 bg-black bg-opacity-85 transition-all duration-300`}
       >
         {gameResult === "you win" ? (
-          <span className="text-success">آفرین! این بازی و بردی</span>
+          <span className="text-success text-2xl font-black">
+            آفرین! این بازی و بردی
+          </span>
         ) : gameResult === "you lose" ? (
-          <span className="text-red-600">ای وای! این بازی و باختی</span>
+          <span className="text-red-600 text-2xl font-black">
+            ای وای! این بازی و باختی
+          </span>
         ) : (
           ""
         )}
+
+        <div className="w-full flex justify-center items-center gap-16 text-sm text-gray-200">
+          <span>امتیاز شما: {toFarsiNumber(points.me / 10)}</span>
+          <span>امتیاز حریف: {toFarsiNumber(points.me / 10)}</span>
+        </div>
+
+        <p className="text-xs font-normal text-gray-300 -mt-1">
+          برای بازگشت به صفحه اصلی و شروع بازی جدید کلیک کن
+        </p>
+
+        <Button
+          isLoading={saveResultLoading}
+          onClick={backHomePageHandler}
+          className="bg-blueColor"
+        >
+          {saveResultLoading ? "لطفا صبر کنید..." : "صفحه اصلی"}
+        </Button>
       </div>
 
       <span
@@ -212,24 +265,24 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
       {/* user move hand */}
       <div className="">
         <Image
-          src={playersMoves.me}
+          src={playersMovesImage.me}
           width={350}
           height={800}
           className="w-full max-w-20 absolute -bottom-20 right-0 slide-up"
           alt="hand"
-          key={playersMoves.key}
+          key={playersMovesImage.key}
         />
       </div>
 
       {/* opponent move hand */}
       <div className="">
         <Image
-          src={playersMoves.opponent}
+          src={playersMovesImage.opponent}
           width={350}
           height={800}
           className="w-full max-w-20 absolute -top-20 left-0 -scale-x-100 -scale-y-100 slide-down"
           alt="hand"
-          key={playersMoves.key}
+          key={playersMovesImage.key}
         />
       </div>
 

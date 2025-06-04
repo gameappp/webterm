@@ -109,10 +109,25 @@ body {
   animation: slideDown 0.5s ease-in forwards;
 }
 
+@keyframes slideUp2 {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up-2 {
+  animation: slideUp2 0.3s ease-in forwards;
+}
+
 @keyframes slideDown2 {
   0% {
-    opacity: 1;
-    transform: translateY(-100%);
+    opacity: 0;
+    transform: translateY(-40px);
   }
   100% {
     opacity: 1;
@@ -121,5 +136,5 @@ body {
 }
 
 .slide-down-2 {
-  animation: slideDown2 0.5s ease-in forwards;
+  animation: slideDown2 0.3s ease-in forwards;
 }
