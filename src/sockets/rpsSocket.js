@@ -36,7 +36,7 @@ const rpsSocket = (httpServer) => {
         handleMakeMove(socket, roomId, move)
       );
       socket.on("joinRoom", (roomId) => socket.join(roomId));
-      socket.on("disconnect", () => handleDisconnect(socket));
+      socket.on("cancelGame", () => handleDisconnect(socket));
     });
   }
 };

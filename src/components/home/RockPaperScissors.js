@@ -53,7 +53,7 @@ const RockPaperScissors = ({ user }) => {
   const cancelGameFindingHandler = () => {
     setLoading(false);
 
-    socket.emit("disconnect");
+    socket.emit("cancelGame");
   };
 
   return (
