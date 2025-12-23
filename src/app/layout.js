@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { baseURL } from "@/services/API";
 import { getUser } from "@/lib/fetchUser";
 import SocketContext from "@/context/SocketContext";
+import GameInvitationNotification from "@/components/games/GameInvitationNotification";
 
 export const metadata = {
   title: "Gamehub",
@@ -25,7 +26,10 @@ export default async function RootLayout({ children }) {
           <GetUserInfo userInfo={userInfo} />
 
           <QueryProvider>
-            <SocketContext userInfo={userInfo}>{children}</SocketContext>
+            <SocketContext userInfo={userInfo}>
+              {children}
+              <GameInvitationNotification />
+            </SocketContext>
           </QueryProvider>
         </Providers>
       </body>

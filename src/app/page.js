@@ -1,11 +1,10 @@
 import Background from "@/components/chessboard/Background";
 import Header from "@/components/header/Header";
 import Chess from "@/components/home/Chess";
-import Poker from "@/components/home/Poker";
+import TicTacToe from "@/components/home/TicTacToe";
 import RockPaperScissors from "@/components/home/RockPaperScissors";
 import Navbar from "@/components/navbar/Navbar";
 import { getUser } from "@/lib/fetchUser";
-import Image from "next/image";
 import React from "react";
 
 const page = async () => {
@@ -13,7 +12,7 @@ const page = async () => {
   const boxes = [
     { id: 1, name: "سنگ کاغذ قیچی", icon: "/rock-paper-scissors.png" },
     { id: 2, name: "شطرنج", icon: "/chess.png" },
-    { id: 3, name: "پوکر", icon: "/poker.png" },
+    { id: 3, name: "دوز", icon: "/tic-tac-toe.png" },
   ];
 
   return (
@@ -26,7 +25,7 @@ const page = async () => {
       <div className="w-full grid grid-cols-3 gap-3">
         <RockPaperScissors user={user} />
         <Chess />
-        <Poker />
+        <TicTacToe user={user} />
         {/* {boxes.map((item, index) => (
           <div
             key={index}

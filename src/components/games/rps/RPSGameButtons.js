@@ -1,15 +1,14 @@
 "use client";
 
 import { toFarsiNumber } from "@/helper/helper";
-import { postData, siteURL } from "@/services/API";
 import { Button } from "@heroui/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import { io } from "socket.io-client";
+import { getSocket } from "@/lib/socket";
 
-const socket = io(siteURL);
+const socket = getSocket();
 
 const movesHand = {
   rock: "/rps/rock.svg",
@@ -22,7 +21,6 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
   const [selectedMove, setSelectedMove] = useState({});
   const [turn, setTurn] = useState(roomInfo?.host?._id === user._id);
   const [resultMessage, setResultMessage] = useState(null);
-  const [saveResultLoading, setSaveResultLoading] = useState(false);
   const [playersMoves, setPlayersMoves] = useState([]);
   const [playersMovesImage, setPlayersMovesImage] = useState({
     me: "/rps/hand.svg",
@@ -35,9 +33,13 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
     opponent: 0,
   });
 
+  const [timer, setTimer] = useState(15);
+  const [timerActive, setTimerActive] = useState(false);
+  const timerIntervalRef = useRef(null);
   const router = useRouter();
 
-  const moves = [
+  // Memoize moves array to prevent re-creation on every render
+  const moves = useMemo(() => [
     {
       id: 1,
       name: "rock",
@@ -56,7 +58,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
       icon: "/rps/s-icon.svg",
       position: "bottom-2 ml-[100px]",
     },
-  ];
+  ], []);
 
   useEffect(() => {
     socket.emit("joinRoom", roomId);
@@ -67,85 +69,239 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
       nickName: user.nickName,
     });
 
+    // Don't start timer here - wait for timerStart event from server
+    // This prevents timer from starting before page is fully loaded
+
     socket.on("waitingForOpponent", ({ currentPlayer }) => {
+      // Always clear timer interval first
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      
       if (currentPlayer === user._id) {
-        setTurn(false);
-      } else {
         setTurn(true);
+        // Don't start timer here - wait for timerStart event
+      } else {
+        setTurn(false);
+        // Stop timer when it's opponent's turn
+        setTimerActive(false);
+        setTimer(15);
       }
     });
 
-    socket.on("gameOver", ({ result, winner, gameMoves }) => {
+    // Listen for timer start event
+    socket.on("timerStart", ({ currentPlayer, timeLeft }) => {
+      // Always clear existing timer first
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      
+      if (currentPlayer === user._id) {
+        // Make sure turn is set to true and result message is cleared
+        setResultMessage(null); // Clear result message when new round starts
+        setTimer(timeLeft || 15);
+        setTurn(true);
+        setTimerActive(true);
+      } else {
+        // Opponent's turn - stop timer
+        setTurn(false);
+        setTimerActive(false);
+        setTimer(15);
+      }
+    });
+
+    socket.on("gameOver", ({ result, winner, gameMoves, points, gameFinished, timeoutPlayer }) => {
       setSelectedMove({});
       setPlayersMoves((prev) => [...prev, gameMoves]);
 
-      // set points & result message
-      if (winner === user._id) {
-        setPoints((prev) => ({ ...prev, me: prev.me + 10 }));
+      // Stop timer and clear interval
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      setTimerActive(false);
+      setTimer(15);
 
+      // Update points from server
+      if (points) {
+        setPoints({
+          me: points[user._id] || 0,
+          opponent: points[roomInfo.opponent._id] || 0,
+        });
+      }
+
+      // set result message
+      if (timeoutPlayer === user._id) {
+        setResultMessage("timeout");
+        toast.error("زمان شما تمام شد! این راند را باختید", {
+          duration: 3000,
+          style: {
+            borderRadius: "10px",
+            background: "#040e1c",
+            color: "#fff",
+            fontSize: "14px",
+          },
+        });
+      } else if (winner === user._id) {
         setResultMessage("win");
       } else if (winner === roomInfo.opponent._id) {
-        setPoints((prev) => ({ ...prev, opponent: prev.opponent + 10 }));
-
         setResultMessage("lose");
       } else {
         setResultMessage("draw");
       }
 
+      // set players moves (handle timeout case)
+      setPlayersMovesImage((prev) => {
+        let meMove = "/rps/hand.svg";
+        let opponentMove = "/rps/hand.svg";
+        
+        if (timeoutPlayer === user._id) {
+          // User timed out - show opponent's move and default for user
+          opponentMove = movesHand[gameMoves[roomInfo.opponent._id]] || "/rps/hand.svg";
+          meMove = "/rps/hand.svg";
+        } else if (timeoutPlayer === roomInfo.opponent._id) {
+          // Opponent timed out - show user's move and default for opponent
+          meMove = movesHand[gameMoves[user._id]] || "/rps/hand.svg";
+          opponentMove = "/rps/hand.svg";
+        } else {
+          // Normal case - both players made moves
+          meMove = movesHand[gameMoves[user._id]] || "/rps/hand.svg";
+          opponentMove = movesHand[gameMoves[roomInfo.opponent._id]] || "/rps/hand.svg";
+        }
+        
+        return {
+          me: meMove,
+          opponent: opponentMove,
+          key: prev.key + 1,
+        };
+      });
+
+      // Reset hands to default after showing result
       setTimeout(() => {
         setResultMessage(null);
+        // Reset hands to default after 4 seconds
+        setPlayersMovesImage({
+          me: "/rps/hand.svg",
+          opponent: "/rps/hand.svg",
+          key: Date.now(), // Force re-render
+        });
       }, 4000);
 
-      // set players moves
-      setPlayersMovesImage((prev) => ({
-        me: movesHand[gameMoves[user._id]],
-        opponent: movesHand[gameMoves[roomInfo.opponent._id]],
-        key: prev.key + 1,
-      }));
+      // Check if game is finished
+      if (gameFinished) {
+        if (points[user._id] >= 100) {
+          setGameResult("you win");
+        } else {
+          setGameResult("you lose");
+        }
+      }
     });
 
-    // finish the game
-    if (points.me === 100 || points.opponent === 100) {
-      if (points.me === 100) {
-        // save game result
-        setSaveResultLoading(true);
+    // Listen for game finished event from server
+    socket.on("gameFinished", ({ winner, finalPoints, totalMoves, saveError }) => {
+      setPlayersMoves(totalMoves);
+      setPoints({
+        me: finalPoints[user._id] || 0,
+        opponent: finalPoints[roomInfo.opponent._id] || 0,
+      });
 
-        postData("/rps/save-result", {
-          roomId,
-          winner: user._id,
-          moves: playersMoves,
-        })
-          .then(() => {
-            setSaveResultLoading(false);
-          })
-          .catch((err) => {
-            setSaveResultLoading(false);
-            toast.error(err?.response?.data?.error || "خطا هنگام ذخیره بازی", {
-              duration: 4000,
-              style: {
-                borderRadius: "10px",
-                background: "#040e1c",
-                color: "#fff",
-                fontSize: "14px",
-              },
-            });
-          });
-
+      if (winner === user._id) {
         setGameResult("you win");
       } else {
         setGameResult("you lose");
       }
-    }
+
+      // Show error message if save failed
+      if (saveError) {
+        toast.error("خطا در ذخیره نتیجه بازی", {
+          duration: 4000,
+          style: {
+            borderRadius: "10px",
+            background: "#040e1c",
+            color: "#fff",
+            fontSize: "14px",
+          },
+        });
+      }
+    });
+
+    // Listen for opponent disconnection
+    socket.on("opponentDisconnected", ({ message }) => {
+      toast.error(message, {
+        duration: 4000,
+        style: {
+          borderRadius: "10px",
+          background: "#040e1c",
+          color: "#fff",
+          fontSize: "14px",
+        },
+      });
+      // Optionally redirect to home or show reconnection option
+      setTimeout(() => {
+        router.push("/");
+      }, 3000);
+    });
+
 
     return () => {
-      socket.off();
+      socket.off("waitingForOpponent");
+      socket.off("gameOver");
+      socket.off("gameFinished");
+      socket.off("opponentDisconnected");
+      socket.off("timerStart");
     };
-  }, [points]);
+  }, [roomId, user._id, roomInfo.opponent._id]);
 
-  const userMoveHandler = (move) => {
+  // Timer effect - optimized to prevent unnecessary re-renders
+  useEffect(() => {
+    // Clear any existing interval first
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+
+    // Only start timer if both conditions are met
+    if (!timerActive || !turn) {
+      return;
+    }
+
+    // Start new interval
+    timerIntervalRef.current = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 1) {
+          setTimerActive(false);
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+            timerIntervalRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+    };
+  }, [timerActive, turn]); // Removed timer from dependencies to prevent re-creation
+
+  const userMoveHandler = useCallback((move) => {
     setSelectedMove(move);
+    // Clear timer interval first
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    // Then reset timer state - stop timer immediately when user makes a move
+    setTimerActive(false);
+    setTimer(15);
     socket.emit("makeMove", { roomId, move: move.name, userId: user._id });
-  };
+  }, [roomId, user._id, socket]);
 
   const backHomePageHandler = () => {
     // toast.success("درحال انتقال به صفحه اصلی...", {
@@ -160,8 +316,6 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
 
     router.push("/");
   };
-
-  console.log(playersMoves)
 
   return (
     <div className="w-full h-full relative max-w-[450px]">
@@ -180,6 +334,8 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
             <span className="text-red-600">ای وای! این دست و باختی</span>
           ) : resultMessage === "draw" ? (
             <span className="text-gray-200">این دست مساوی شد!</span>
+          ) : resultMessage === "timeout" ? (
+            <span className="text-red-600">زمان شما تمام شد! این دست و باختی</span>
           ) : (
             ""
           )}
@@ -216,21 +372,38 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
         </p>
 
         <Button
-          isLoading={saveResultLoading}
           onClick={backHomePageHandler}
           className="bg-blueColor"
         >
-          {saveResultLoading ? "لطفا صبر کنید..." : "صفحه اصلی"}
+          صفحه اصلی
         </Button>
       </div>
 
+      <div className="absolute left-2/4 -translate-x-2/4 bottom-36 flex flex-col items-center gap-2">
       <span
         className={`p-2 text-xs ${
           turn ? "bg-success text-success" : "bg-red-600 text-red-600"
-        } bg-opacity-15 transition-all duration-300 rounded-xl absolute left-2/4 -translate-x-2/4 bottom-36`}
+          } bg-opacity-15 transition-all duration-300 rounded-xl`}
       >
         {turn ? "نوبت شما" : "نوبت حریف"}
       </span>
+        
+        {/* Timer - Show when it's user's turn and timer is active */}
+        {turn && timerActive && (
+          <div className="flex items-center gap-2">
+            <div className={`size-12 rounded-full border-2 flex items-center justify-center transition-all ${
+              timer <= 5 
+                ? "border-red-500 text-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
+                : timer <= 8 
+                ? "border-yellow-500 text-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]" 
+                : "border-blueColor text-blueColor shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+            }`}>
+              <span className="text-base font-bold">{toFarsiNumber(timer.toString())}</span>
+            </div>
+            <span className="text-xs text-gray-400 font-medium">ثانیه</span>
+          </div>
+        )}
+      </div>
 
       <button
         disabled={!turn}

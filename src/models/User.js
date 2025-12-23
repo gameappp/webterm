@@ -19,6 +19,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  balance: {
+    type: Number,
+    default: 0,
+  },
   deletedAt: {
     type: mongoose.Schema.Types.Mixed,
     default: null,

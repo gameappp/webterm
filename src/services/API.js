@@ -10,7 +10,7 @@ export const siteURL = `${hostName}`;
 // axios config
 const servicesApi = axios.create({
   baseURL: `${hostName}/api`,
-  withCredentials: false,
+  withCredentials: true,
   timeout: 60000000,
   headers: {
     "Content-Type": "application/json",

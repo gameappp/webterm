@@ -30,35 +30,50 @@ const UserItem = ({ userInfo }) => {
   };
 
   return (
-    <div className="w-full h-14 px-4 rounded-2xl bg-primaryLightTheme flex items-center justify-between">
-      <div className="flex items-center gap-2">
+    <div className="relative w-full rounded-2xl p-[1px] bg-gradient-to-b from-blueColor/30 via-blueColor/10 to-transparent group hover:from-blueColor/40 hover:via-blueColor/15 transition-all duration-300">
+      <div className="relative flex items-center justify-between gap-3 rounded-2xl bg-secondaryDarkTheme/80 backdrop-blur-sm p-4">
+        {/* User Info */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="relative flex-shrink-0">
+            <div className="absolute -inset-1 rounded-xl bg-blueColor/20 blur-md group-hover:bg-blueColor/30 transition-colors" />
         <Image
           src={"/avatar.png"}
           width={50}
           height={50}
-          className="size-8 rounded-xl object-cover -mr-0.5"
+              className="relative size-12 rounded-xl object-cover border-2 border-white/10"
           alt={`کاربر ${userInfo.nickName}`}
         />
+          </div>
 
-        <div className="flex flex-col">
-          <span className="text-xs">{userInfo.nickName}</span>
-          <span className="text-[10px] text-blueColor">
-            {userInfo.userName}
+          <div className="flex-1 flex flex-col gap-0.5 min-w-0">
+            <span className="text-sm font-semibold text-white truncate">
+              {userInfo.nickName}
+            </span>
+            <span dir="ltr" className="text-xs text-blueColor font-medium">
+              @{userInfo.userName}
           </span>
         </div>
       </div>
 
+        {/* Status/Action */}
+        <div className="flex-shrink-0">
       {userInfo?.friendshipStatus === "accepted" ? (
-        <p className="text-xs text-blueColor">درخواست دوستی تایید شده</p>
+            <span className="text-xs text-emerald-300 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
+              دوست
+            </span>
       ) : userInfo?.friendshipStatus === "pending" ? (
-        <p className="text-xs text-warning">در انتظار تایید درخواست دوستی</p>
+            <span className="text-xs text-yellow-300 px-2 py-1 rounded-lg bg-yellow-500/10 border border-yellow-400/30">
+              در انتظار
+            </span>
       ) : data?.message ? (
-        <p className="text-xs text-success">{data.message}</p>
+            <span className="text-xs text-emerald-300 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-400/30">
+              {data.message}
+            </span>
       ) : (
         <button
           onClick={sendFriendshipRequestHandler}
           disabled={isPending}
-          className="px-2 h-8 text-xs flex items-center gap-1 bg-blueColor bg-opacity-15 text-blueColor rounded-xl"
+              className="px-3 py-1.5 text-xs flex items-center gap-1.5 bg-blueColor/10 border border-blueColor/30 text-blueColor rounded-lg hover:bg-blueColor/20 transition-colors font-medium disabled:opacity-50"
         >
           {isPending ? (
             <Spinner
@@ -69,10 +84,11 @@ const UserItem = ({ userInfo }) => {
               }}
             />
           ) : (
+                <>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              width={16}
-              height={16}
+                    width={14}
+                    height={14}
               viewBox="0 0 16 16"
             >
               <path
@@ -83,11 +99,13 @@ const UserItem = ({ userInfo }) => {
                 strokeWidth={0.016}
               />
             </svg>
+                  افزودن
+                </>
           )}
-
-          <span>افزودن به دوستان</span>
         </button>
       )}
+        </div>
+      </div>
     </div>
   );
 };

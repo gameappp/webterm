@@ -11,7 +11,7 @@ import { getSocket } from "@/lib/socket";
 
 const socket = getSocket();
 
-const RockPaperScissors = ({ user }) => {
+const TicTacToe = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [gameInfo, setGameInfo] = useState({});
   const router = useRouter();
@@ -26,10 +26,8 @@ const RockPaperScissors = ({ user }) => {
     socket.on("onlineUsers", (users) => console.log(users));
 
     socket.on(
-      "gameFound",
+      "tttGameFound",
       ({ roomId, opponent, playerTurn, isInvitedGame }) => {
-        // Only handle non-invited games (random matchmaking)
-        // Invited games are handled in SocketContext
         if (isInvitedGame) {
           return;
         }
@@ -46,7 +44,7 @@ const RockPaperScissors = ({ user }) => {
           },
         });
 
-        router.push(`/rps/${roomId}`);
+        router.push(`/tictactoe/${roomId}`);
 
         setGameInfo({ roomId, opponent, playerTurn });
       }
@@ -57,13 +55,12 @@ const RockPaperScissors = ({ user }) => {
 
   const findGameHandler = () => {
     setLoading(true);
-    socket.emit("findGame", { userId: user._id });
+    socket.emit("findTicTacToeGame", { userId: user._id });
   };
 
   const cancelGameFindingHandler = () => {
     setLoading(false);
-
-    socket.emit("cancelGame");
+    socket.emit("cancelTicTacToeGame");
   };
 
   const isYou = gameInfo?.playerTurn?.userId === user?._id ? "شما" : "حریف";
@@ -74,10 +71,10 @@ const RockPaperScissors = ({ user }) => {
 
       {(loading || gameInfo?.roomId) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="relative w-[90%] max-w-[420px] rounded-3xl p-[1px] bg-gradient-to-b from-blueColor/60 via-blueColor/20 to-transparent shadow-[0_0_40px_rgba(59,130,246,0.35)]">
+          <div className="relative w-[90%] max-w-[420px] rounded-3xl p-[1px] bg-gradient-to-b from-purple-500/60 via-purple-500/20 to-transparent shadow-[0_0_40px_rgba(168,85,247,0.35)]">
             <div className="relative flex flex-col items-center gap-6 rounded-3xl bg-secondaryDarkTheme/95 px-6 py-7 backdrop-blur-xl">
               <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
-                <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-blueColor/10 blur-3xl" />
+                <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-purple-500/10 blur-3xl" />
                 <div className="absolute -left-16 bottom-0 h-36 w-36 rounded-full bg-emerald-400/10 blur-3xl" />
               </div>
 
@@ -85,7 +82,7 @@ const RockPaperScissors = ({ user }) => {
                 <>
                   <div className="flex flex-col items-center gap-3 animate-fade-in">
                     <span className="text-sm text-gray-400">
-                      سنگ، کاغذ، قیچی آنلاین
+                      بازی دوز آنلاین
                     </span>
                     <h3 className="text-lg font-bold text-white">
                       در حال پیدا کردن حریف برای شما...
@@ -100,8 +97,8 @@ const RockPaperScissors = ({ user }) => {
                     <Spinner
                       classNames={{
                         label: "text-xs text-gray-300 mt-3",
-                        circle1: "border-b-blueColor",
-                        circle2: "border-b-blueColor",
+                        circle1: "border-b-purple-500",
+                        circle2: "border-b-purple-500",
                       }}
                     />
 
@@ -131,10 +128,9 @@ const RockPaperScissors = ({ user }) => {
                   </h3>
 
                   <div className="flex items-center gap-8">
-                    {/* you */}
                     <div className="flex flex-col items-center gap-2 slide-up-2">
                       <div className="relative">
-                        <div className="absolute -inset-1 rounded-2xl bg-blueColor/40 blur-md" />
+                        <div className="absolute -inset-1 rounded-2xl bg-purple-500/40 blur-md" />
                         <Image
                           src={"/avatar.png"}
                           width={100}
@@ -154,7 +150,6 @@ const RockPaperScissors = ({ user }) => {
                       <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-500/50 to-transparent" />
                     </div>
 
-                    {/* opponent */}
                     <div className="flex flex-col items-center gap-2 slide-down-2">
                       <div className="relative">
                         <div className="absolute -inset-1 rounded-2xl bg-emerald-400/40 blur-md" />
@@ -190,20 +185,107 @@ const RockPaperScissors = ({ user }) => {
         className="relative w-full h-36 rounded-3xl p-[1px] group bg-gradient-to-b from-blueColor/40 via-blueColor/10 to-transparent hover:from-blueColor/70 hover:via-blueColor/20 transition-all duration-300 shadow-[0_0_25px_rgba(15,23,42,0.9)] hover:shadow-[0_0_35px_rgba(59,130,246,0.7)]"
       >
         <div className="relative w-full h-full flex flex-col justify-center items-center gap-2 rounded-3xl bg-secondaryDarkTheme/95 backdrop-blur-xl transition-all duration-300 group-hover:bg-secondaryDarkTheme group-hover:-translate-y-1 group-hover:text-blueColor">
-          {/* badge */}
-          <span className="absolute top-2 left-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-[2px] text-[9px] font-medium text-emerald-300">
+          <span className="absolute top-2 left-2 rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-[2px] text-[9px] font-medium text-purple-300">
             آنلاین
           </span>
-
-          <Image
-            src={"/rock-paper-scissors.png"}
-            width={100}
-            height={100}
-            alt={"rock-paper-scissors"}
-            className="size-14 drop-shadow-[0_0_18px_rgba(59,130,246,0.6)] group-hover:scale-110 transition-transform duration-300"
-          />
+          <div className="relative size-14 flex items-center justify-center">
+            <svg
+              width="56"
+              height="56"
+              viewBox="0 0 56 56"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="drop-shadow-[0_0_18px_rgba(168,85,247,0.6)] group-hover:scale-110 transition-transform duration-300"
+            >
+              <line
+                x1="18.67"
+                y1="0"
+                x2="18.67"
+                y2="56"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-purple-400"
+              />
+              <line
+                x1="37.33"
+                y1="0"
+                x2="37.33"
+                y2="56"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-purple-400"
+              />
+              <line
+                x1="0"
+                y1="18.67"
+                x2="56"
+                y2="18.67"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-purple-400"
+              />
+              <line
+                x1="0"
+                y1="37.33"
+                x2="56"
+                y2="37.33"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-purple-400"
+              />
+              <line
+                x1="6"
+                y1="6"
+                x2="13.33"
+                y2="13.33"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="text-blueColor"
+              />
+              <line
+                x1="13.33"
+                y1="6"
+                x2="6"
+                y2="13.33"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="text-blueColor"
+              />
+              <circle
+                cx="28"
+                cy="28"
+                r="5.5"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                fill="none"
+                className="text-emerald-400"
+              />
+              <line
+                x1="42.67"
+                y1="42.67"
+                x2="50"
+                y2="50"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="text-blueColor"
+              />
+              <line
+                x1="50"
+                y1="42.67"
+                x2="42.67"
+                y2="50"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                className="text-blueColor"
+              />
+            </svg>
+          </div>
           <span className="text-xs font-semibold text-white group-hover:text-blueColor">
-            سنگ کاغذ قیچی
+            دوز
           </span>
           <span className="text-[10px] text-gray-400 group-hover:text-gray-300">
             پیدا کردن حریف تصادفی
@@ -214,4 +296,5 @@ const RockPaperScissors = ({ user }) => {
   );
 };
 
-export default RockPaperScissors;
+export default TicTacToe;
+

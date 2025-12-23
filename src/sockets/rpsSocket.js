@@ -1,7 +1,7 @@
 const { Server } = require("socket.io");
 
 let io;
-const onlineUsers = {}; // online users
+const onlineUsers = {}; // online users - shared between all game sockets
 let waitingPlayer = null;
 const gameMoves = {};
 const playerTurn = {}; // نگهداری نوبت هر بازیکن
@@ -13,9 +13,257 @@ const baseURL = "http://localhost:3000";
 // New: Store pending invitations
 const pendingInvitations = {};
 
+// Game state tracking
+const gameStates = {}; // Store game state for each room
+
+// Timer tracking for each room
+const roomTimers = {}; // Store timeout timers for each room
+
+// Function to start timer for a player's turn
+const startTurnTimer = (roomId, currentPlayer) => {
+  // Clear existing timer if any
+  if (roomTimers[roomId]) {
+    clearTimeout(roomTimers[roomId]);
+  }
+
+  // Start 15 second timer
+  roomTimers[roomId] = setTimeout(() => {
+    console.log(`⏰ Timer expired for player ${currentPlayer} in room ${roomId}`);
+    
+    // Delete timer reference first
+    delete roomTimers[roomId];
+    
+    // Check if player has made a move
+    if (!gameMoves[roomId] || gameMoves[roomId][currentPlayer] === undefined) {
+      // Player didn't make a move
+      const gameState = gameStates[roomId];
+      if (!gameState || gameState.gameFinished) {
+        return;
+      }
+
+      // Get opponent
+      const opponent = gameState.player1 === currentPlayer ? gameState.player2 : gameState.player1;
+      
+      // Check if opponent has made a move or timed out
+      const opponentHasMoved = gameMoves[roomId] && gameMoves[roomId][opponent] !== undefined && gameMoves[roomId][opponent] !== null;
+      const opponentHasTimedOut = gameMoves[roomId] && gameMoves[roomId][opponent] === null;
+      
+      if (!gameMoves[roomId]) {
+        gameMoves[roomId] = {};
+      }
+      
+      // Mark current player as timeout
+      gameMoves[roomId][currentPlayer] = null;
+      
+      if (opponentHasMoved) {
+        // Opponent has moved, current player loses - announce result immediately
+        const result = "timeout";
+        const winner = opponent;
+        
+        // Update game state
+        const roundData = {
+          round: gameState.moves.length + 1,
+          moves: { ...gameMoves[roomId] },
+          result,
+          winner
+        };
+        gameState.moves.push(roundData);
+
+        // Update points
+        gameState.points[winner] += 10;
+
+        // Check if game is finished
+        const maxPoints = 100;
+        const player1Points = gameState.points[gameState.player1];
+        const player2Points = gameState.points[gameState.player2];
+
+        let gameWinner = null;
+        if (player1Points >= maxPoints || player2Points >= maxPoints) {
+          gameState.gameFinished = true;
+          gameWinner = player1Points >= maxPoints ? gameState.player1 : gameState.player2;
+        }
+
+        // Save game result
+        saveGameResult(roomId, gameWinner, gameState.moves).catch(err => {
+          console.error("Failed to save timeout round result:", err);
+        });
+
+        // Notify clients
+        if (gameState.gameFinished && gameWinner) {
+          io.to(roomId).emit("gameFinished", {
+            winner: gameWinner,
+            finalPoints: gameState.points,
+            totalMoves: gameState.moves
+          });
+        }
+
+        io.to(roomId).emit("gameOver", {
+          result,
+          winner,
+          gameMoves: gameMoves[roomId],
+          points: gameState.points,
+          gameFinished: gameState.gameFinished,
+          timeoutPlayer: currentPlayer
+        });
+
+        // Reset moves for next round
+        gameMoves[roomId] = {};
+
+        // Set next turn
+        playerTurn[roomId] = opponent;
+        
+        // Emit waitingForOpponent but delay timer start
+        io.to(roomId).emit("waitingForOpponent", {
+          message: "منتظر حرکت حریف باشید!",
+          currentPlayer: opponent,
+        });
+
+        // Start timer after 4 seconds (when frontend finishes showing result)
+        if (!gameState.gameFinished) {
+          setTimeout(() => {
+            // Check if game is still active
+            if (gameStates[roomId] && !gameStates[roomId].gameFinished) {
+              startTurnTimer(roomId, opponent);
+              // Emit timer start event
+              io.to(roomId).emit("timerStart", {
+                currentPlayer: opponent,
+                timeLeft: 15
+              });
+            }
+          }, 4000);
+        }
+      } else if (opponentHasTimedOut) {
+        // Both players timed out - draw
+        const result = "draw";
+        const winner = "draw";
+        
+        // Update game state
+        const roundData = {
+          round: gameState.moves.length + 1,
+          moves: { ...gameMoves[roomId] },
+          result,
+          winner
+        };
+        gameState.moves.push(roundData);
+
+        // No points for draw
+
+        // Check if game is finished (shouldn't happen with draw, but check anyway)
+        const maxPoints = 100;
+        const player1Points = gameState.points[gameState.player1];
+        const player2Points = gameState.points[gameState.player2];
+
+        let gameWinner = null;
+        if (player1Points >= maxPoints || player2Points >= maxPoints) {
+          gameState.gameFinished = true;
+          gameWinner = player1Points >= maxPoints ? gameState.player1 : gameState.player2;
+        }
+
+        // Save game result
+        saveGameResult(roomId, gameWinner, gameState.moves).catch(err => {
+          console.error("Failed to save timeout round result:", err);
+        });
+
+        // Notify clients
+        if (gameState.gameFinished && gameWinner) {
+          io.to(roomId).emit("gameFinished", {
+            winner: gameWinner,
+            finalPoints: gameState.points,
+            totalMoves: gameState.moves
+          });
+        }
+
+        io.to(roomId).emit("gameOver", {
+          result,
+          winner,
+          gameMoves: gameMoves[roomId],
+          points: gameState.points,
+          gameFinished: gameState.gameFinished,
+          timeoutPlayer: null // Both timed out
+        });
+
+        // Reset moves for next round
+        gameMoves[roomId] = {};
+
+        // Set next turn
+        playerTurn[roomId] = opponent;
+        
+        // Emit waitingForOpponent but delay timer start
+        io.to(roomId).emit("waitingForOpponent", {
+          message: "منتظر حرکت حریف باشید!",
+          currentPlayer: opponent,
+        });
+
+        // Start timer after 4 seconds (when frontend finishes showing result)
+        if (!gameState.gameFinished) {
+          setTimeout(() => {
+            // Check if game is still active
+            if (gameStates[roomId] && !gameStates[roomId].gameFinished) {
+              startTurnTimer(roomId, opponent);
+              // Emit timer start event
+              io.to(roomId).emit("timerStart", {
+                currentPlayer: opponent,
+                timeLeft: 15
+              });
+            }
+          }, 4000);
+        }
+      } else {
+        // Opponent hasn't moved yet - wait for opponent to move or timeout
+        // Start timer for opponent immediately (they need to move or timeout)
+        playerTurn[roomId] = opponent;
+        
+        // Notify that we're waiting for opponent's move
+        io.to(roomId).emit("waitingForOpponent", {
+          message: "منتظر حرکت حریف باشید!",
+          currentPlayer: opponent,
+        });
+        
+        // Start timer for opponent (will check if both timeout in next timeout)
+        startTurnTimer(roomId, opponent);
+        // Emit timer start event
+        io.to(roomId).emit("timerStart", {
+          currentPlayer: opponent,
+          timeLeft: 15
+        });
+      }
+    }
+  }, 15000); // 15 seconds
+};
+
+// Function to save game result to database
+const saveGameResult = async (roomId, winner, moves) => {
+  try {
+    const response = await fetch(`${baseURL}/api/rps/save-result`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomId,
+        winner,
+        moves,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to save game result:", errorText);
+      throw new Error(`Failed to save game result: ${errorText}`);
+    } else {
+      console.log("Game result saved successfully");
+      return true;
+    }
+  } catch (error) {
+    console.error("Error saving game result:", error);
+    throw error;
+  }
+};
+
 const rpsSocket = (httpServer) => {
   if (!io) {
     io = new Server(httpServer, { cors: { origin: "*" } });
+    
+    // Export io برای استفاده در socket های دیگر
+    module.exports.io = io;
 
     io.on("connection", (socket) => {
       console.log(`🔵 User connected: ${socket.id}`);
@@ -52,8 +300,8 @@ const rpsSocket = (httpServer) => {
       socket.on("cancelGame", () => handleDisconnect(socket));
 
       // New: Handle game invitations
-      socket.on("inviteFriend", ({ friendId }) =>
-        handleInviteFriend(socket, friendId)
+      socket.on("inviteFriend", ({ friendId, gameType, gameName, message }) =>
+        handleInviteFriend(socket, friendId, gameType, gameName, message)
       );
       socket.on("acceptInvitation", ({ invitationId }) =>
         handleAcceptInvitation(socket, invitationId)
@@ -62,11 +310,14 @@ const rpsSocket = (httpServer) => {
         handleRejectInvitation(socket, invitationId)
       );
     });
+    
+    // Export io برای استفاده در socket های دیگر
+    module.exports.io = io;
   }
 };
 
 // New: Handle friend invitation
-const handleInviteFriend = (socket, friendId) => {
+const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سنگ کاغذ قیچی", message = "بیا بازی کنیم! 🎮") => {
   const inviterId = socket.userId;
 
   // Check if friend is online
@@ -90,10 +341,23 @@ const handleInviteFriend = (socket, friendId) => {
       userName: onlineUsers[inviterId].userName,
       nickName: onlineUsers[inviterId].nickName,
     },
+    gameType,
+    gameName,
+    message,
     timestamp: Date.now(),
   });
 
   // Send invitation to friend
+  console.log("📨 Sending invitation to friend:", {
+    friendId,
+    friendSocketId: onlineUsers[friendId].socketId,
+    inviterId,
+    invitationId,
+    gameType,
+    gameName,
+    message,
+  });
+
   io.to(onlineUsers[friendId].socketId).emit("gameInvitation", {
     invitationId,
     from: {
@@ -101,7 +365,12 @@ const handleInviteFriend = (socket, friendId) => {
       userName: onlineUsers[inviterId].userName,
       nickName: onlineUsers[inviterId].nickName,
     },
+    gameType,
+    gameName,
+    message,
   });
+
+  console.log("✅ Invitation sent to socket:", onlineUsers[friendId].socketId);
 
   // Notify inviter that invitation was sent
   socket.emit("invitationSent", {
@@ -216,6 +485,23 @@ const handleAcceptInvitation = async (socket, invitationId) => {
 
       gameMoves[roomId] = {};
       playerTurn[roomId] = inviterUserId; // نوبت بازیکن اول (دعوت کننده)
+      
+      // Initialize game state
+      gameStates[roomId] = {
+        player1: inviterUserId,
+        player2: accepterId,
+        points: { [inviterUserId]: 0, [accepterId]: 0 },
+        moves: [],
+        gameFinished: false
+      };
+
+      // Start timer for first player
+      startTurnTimer(roomId, inviterUserId);
+      // Emit timer start event
+      io.to(roomId).emit("timerStart", {
+        currentPlayer: inviterUserId,
+          timeLeft: 15
+      });
 
       // Remove invitation
       pendingInvitations[accepterId] = pendingInvitations[accepterId].filter(
@@ -315,6 +601,23 @@ const handleFindGame = async (socket) => {
 
         gameMoves[roomId] = {};
         playerTurn[roomId] = waitingPlayer.userId; // نوبت بازیکن اول
+        
+        // Initialize game state
+        gameStates[roomId] = {
+          player1: waitingPlayer.userId,
+          player2: socket.userId,
+          points: { [waitingPlayer.userId]: 0, [socket.userId]: 0 },
+          moves: [],
+          gameFinished: false
+        };
+
+      // Start timer for first player
+      startTurnTimer(roomId, waitingPlayer.userId);
+      // Emit timer start event
+      io.to(roomId).emit("timerStart", {
+        currentPlayer: waitingPlayer.userId,
+          timeLeft: 15
+      });
       }
 
       waitingPlayer = null;
@@ -332,54 +635,179 @@ const handleFindGame = async (socket) => {
 const handleMakeMove = async (socket, roomId, move) => {
   console.log(`Received move from ${socket.userId} in room ${roomId}: ${move}`);
 
-  if (!gameMoves[roomId]) {
-    console.log(`Room ${roomId} not found in gameMoves`);
+  if (!gameMoves[roomId] || !gameStates[roomId]) {
+    console.log(`Room ${roomId} not found in gameMoves or gameStates`);
     return;
   }
 
   const currentPlayer = socket.userId;
   console.log(`Current player: ${currentPlayer}`);
 
+  // Clear timer since player made a move
+  if (roomTimers[roomId]) {
+    clearTimeout(roomTimers[roomId]);
+    delete roomTimers[roomId];
+    console.log(`⏰ Timer cleared for room ${roomId}`);
+  }
+
   // ذخیره حرکت بازیکن فعلی
   gameMoves[roomId][currentPlayer] = move;
   console.log(`Updated gameMoves[${roomId}]:`, gameMoves[roomId]);
 
-  // چک کردن اینکه هر دو بازیکن حرکت کردن یا نه
-  const playerKeys = Object.keys(gameMoves[roomId]);
-  console.log(`Players who moved: ${playerKeys}`);
+  // چک کردن اینکه هر دو بازیکن تصمیم گرفتن (حرکت یا timeout)
+  const gameState = gameStates[roomId];
+  const player1 = gameState.player1;
+  const player2 = gameState.player2;
+  
+  const player1Decision = gameMoves[roomId][player1] !== undefined; // move or null (timeout)
+  const player2Decision = gameMoves[roomId][player2] !== undefined; // move or null (timeout)
+  
+  console.log(`Player decisions - ${player1}: ${gameMoves[roomId][player1]}, ${player2}: ${gameMoves[roomId][player2]}`);
 
-  if (
-    playerKeys.length === 2 &&
-    gameMoves[roomId][playerKeys[0]] &&
-    gameMoves[roomId][playerKeys[1]]
-  ) {
-    const [player1, player2] = playerKeys;
+  if (player1Decision && player2Decision) {
     const move1 = gameMoves[roomId][player1];
     const move2 = gameMoves[roomId][player2];
     console.log(`Moves - ${player1}: ${move1}, ${player2}: ${move2}`);
 
-    const result = determineWinner(move1, move2);
-    const winner =
-      result === "draw" ? "draw" : result === "player1" ? player1 : player2;
+    let result, winner, timeoutPlayer = null;
+    
+    // Check for timeout cases
+    if (move1 === null && move2 === null) {
+      // Both timed out - draw
+      result = "draw";
+      winner = "draw";
+    } else if (move1 === null) {
+      // Player1 timed out, player2 wins
+      result = "timeout";
+      winner = player2;
+      timeoutPlayer = player1;
+    } else if (move2 === null) {
+      // Player2 timed out, player1 wins
+      result = "timeout";
+      winner = player1;
+      timeoutPlayer = player2;
+    } else {
+      // Both made moves - normal game
+      result = determineWinner(move1, move2);
+      winner = result === "draw" ? "draw" : result === "player1" ? player1 : player2;
+    }
+    
     console.log(`Game result: ${result}, Winner: ${winner}`);
+
+    // Update game state
+    const roundData = {
+      round: gameState.moves.length + 1,
+      moves: { ...gameMoves[roomId] },
+      result,
+      winner
+    };
+    gameState.moves.push(roundData);
+
+    // Update points (only if there's a winner, not draw)
+    if (winner !== "draw") {
+      gameState.points[winner] += 10;
+    }
+
+    // Check if game is finished
+    const maxPoints = 100;
+    const player1Points = gameState.points[gameState.player1];
+    const player2Points = gameState.points[gameState.player2];
+
+    let gameWinner = null;
+    if (player1Points >= maxPoints || player2Points >= maxPoints) {
+      gameState.gameFinished = true;
+      gameWinner = player1Points >= maxPoints ? gameState.player1 : gameState.player2;
+    }
+
+    // Save game result after each round
+    try {
+      await saveGameResult(roomId, gameWinner, gameState.moves);
+      console.log(`Round ${roundData.round} result saved successfully${gameWinner ? ' (Game finished)' : ''}`);
+    } catch (error) {
+      console.error("Failed to save round result:", error);
+    }
+
+    // If game is finished, notify clients
+    if (gameState.gameFinished && gameWinner) {
+      try {
+        // Notify clients about game finish
+        io.to(roomId).emit("gameFinished", {
+          winner: gameWinner,
+          finalPoints: gameState.points,
+          totalMoves: gameState.moves
+        });
+      } catch (error) {
+        console.error("Failed to emit game finished event:", error);
+        // Still notify clients but with error flag
+        io.to(roomId).emit("gameFinished", {
+          winner: gameWinner,
+          finalPoints: gameState.points,
+          totalMoves: gameState.moves,
+          saveError: true
+        });
+      }
+    }
 
     io.to(roomId).emit("gameOver", {
       result,
       winner,
       gameMoves: gameMoves[roomId],
+      points: gameState.points,
+      gameFinished: gameState.gameFinished,
+      timeoutPlayer: timeoutPlayer || undefined
     });
     console.log(`Sent gameOver to room ${roomId}`);
     gameMoves[roomId] = {};
 
+    // Determine next player
+    const nextPlayer = currentPlayer === gameState.player1 ? gameState.player2 : gameState.player1;
+    playerTurn[roomId] = nextPlayer;
+
+    // Emit waitingForOpponent first
     io.to(roomId).emit("waitingForOpponent", {
       message: "منتظر حرکت حریف باشید!",
-      currentPlayer,
+      currentPlayer: nextPlayer,
+    });
+
+    // Start timer after 4 seconds (when frontend finishes showing result)
+    if (!gameState.gameFinished) {
+      setTimeout(() => {
+        // Check if game is still active
+        if (gameStates[roomId] && !gameStates[roomId].gameFinished) {
+          startTurnTimer(roomId, nextPlayer);
+          // Emit timer start event
+          io.to(roomId).emit("timerStart", {
+            currentPlayer: nextPlayer,
+            timeLeft: 15
+          });
+        }
+      }, 4000);
+    }
+  } else {
+    // Determine next player
+    const gameState = gameStates[roomId];
+    if (gameState) {
+      const nextPlayer = currentPlayer === gameState.player1 ? gameState.player2 : gameState.player1;
+      playerTurn[roomId] = nextPlayer;
+
+    io.to(roomId).emit("waitingForOpponent", {
+      message: "منتظر حرکت حریف باشید!",
+        currentPlayer: nextPlayer,
+      });
+
+      // Start timer for next player
+      startTurnTimer(roomId, nextPlayer);
+      // Emit timer start event
+      io.to(roomId).emit("timerStart", {
+        currentPlayer: nextPlayer,
+          timeLeft: 15
     });
   } else {
     io.to(roomId).emit("waitingForOpponent", {
       message: "منتظر حرکت حریف باشید!",
       currentPlayer,
     });
+    }
     console.log(`Sent waitingForOpponent to ${socket.userId}`);
   }
 };
@@ -389,6 +817,25 @@ const handleDisconnect = (socket) => {
   console.log(`🔴 User disconnected: ${socket.id}`);
   if (socket.userId) {
     delete onlineUsers[socket.userId];
+    
+    // Clean up game states for disconnected user
+    for (const roomId in gameStates) {
+      const gameState = gameStates[roomId];
+      if (gameState.player1 === socket.userId || gameState.player2 === socket.userId) {
+        // Notify opponent about disconnection
+        const opponentId = gameState.player1 === socket.userId ? gameState.player2 : gameState.player1;
+        if (onlineUsers[opponentId]) {
+          io.to(onlineUsers[opponentId].socketId).emit("opponentDisconnected", {
+            message: "حریف شما از بازی خارج شد"
+          });
+        }
+        
+        // Clean up game state
+        delete gameStates[roomId];
+        delete gameMoves[roomId];
+        delete playerTurn[roomId];
+      }
+    }
   } else {
     // حذف با socketId در صورتی که userId نداشته باشه
     for (const key in onlineUsers) {
@@ -411,4 +858,4 @@ const determineWinner = (move1, move2) => {
   return rules[move1] === move2 ? "player1" : "player2";
 };
 
-module.exports = { rpsSocket };
+module.exports = { rpsSocket, io, onlineUsers };

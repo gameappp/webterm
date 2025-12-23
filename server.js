@@ -2,6 +2,7 @@ const express = require('express');
 const next = require('next');
 const http = require('http');
 const { rpsSocket } = require('./src/sockets/rpsSocket');
+const { tictactoeSocket } = require('./src/sockets/tictactoeSocket');
 
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
@@ -12,7 +13,10 @@ app.prepare().then(() => {
   const server = express();
   const httpServer = http.createServer(server);
 
-  rpsSocket(httpServer); // اتصال WebSocket
+  // ساخت یک socket server واحد برای همه بازی‌ها
+  rpsSocket(httpServer); // این io رو می‌سازه و export می‌کنه
+  const { io, onlineUsers } = require('./src/sockets/rpsSocket');
+  tictactoeSocket(httpServer, io, onlineUsers); // از همون io و onlineUsers استفاده می‌کنه
 
   server.all('*', (req, res) => {
     return handle(req, res);

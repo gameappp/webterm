@@ -45,4 +45,14 @@ const getSquareColor = (square) => {
   return sum % 2 === 0 ? "black" : "white";
 };
 
-export { getGreeting, toFarsiNumber, getSquareColor,idGenerator };
+const verifyToken = (token) => {
+  try {
+    const jwt = require("jsonwebtoken");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.userId;
+  } catch (error) {
+    return null;
+  }
+};
+
+export { getGreeting, toFarsiNumber, getSquareColor, idGenerator, verifyToken };
