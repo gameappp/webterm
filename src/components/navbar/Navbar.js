@@ -43,7 +43,7 @@ const Navbar = () => {
   ];
 
   return (
-    <div className="w-full max-w-[450px] fixed left-0 right-0 bottom-0 px-4 pb-4">
+    <div className="w-full max-w-[450px] fixed left-0 right-0 bottom-0 px-4 pb-4 z-50">
       <div className="relative w-full h-16 rounded-3xl px-6 flex justify-between items-center bg-secondaryDarkTheme/95 backdrop-blur-xl border border-white/5 shadow-[0_0_30px_rgba(15,23,42,0.9)]">
         <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
           <div className="absolute -left-6 -top-6 h-20 w-20 rounded-full bg-blueColor/10 blur-3xl" />

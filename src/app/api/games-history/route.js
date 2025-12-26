@@ -1,14 +1,12 @@
 import connectDB from "@/lib/db";
 import RockPaperScissors from "@/models/RockPaperScissors";
+import TicTacToe from "@/models/TicTacToe";
 import User from "@/models/User";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 
 export async function GET(req) {
-  connectDB();
-
-//   const { searchParams } = new URL(req.url);
-//   const token = searchParams.get("userId");
+  await connectDB();
 
   try {
     // استخراج توکن از کوکی یا هدر
@@ -29,14 +27,54 @@ export async function GET(req) {
       return NextResponse.json({ error: "توکن نامعتبر است." }, { status: 401 });
     }
 
-    // دریافت همه بازی‌های مربوط به کاربر
-    const games = await RockPaperScissors.find({
+    // Get pagination params
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 10;
+    const skip = (page - 1) * limit;
+
+    // دریافت بازی‌های RPS
+    const rpsGames = await RockPaperScissors.find({
       $or: [{ player1: userId }, { player2: userId }],
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // دریافت بازی‌های TicTacToe
+    const tttGames = await TicTacToe.find({
+      $or: [{ player1: userId }, { player2: userId }],
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Combine and sort all games
+    const allGames = [
+      ...rpsGames.map((game) => ({ ...game, gameType: "rps" })),
+      ...tttGames.map((game) => ({ ...game, gameType: "tictactoe" })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // Calculate stats
+    let totalWins = 0;
+    let totalLosses = 0;
+    let totalDraws = 0;
+
+    allGames.forEach((game) => {
+      if (!game.winner || game.winner === "draw") {
+        totalDraws++;
+      } else if (game.winner === userId) {
+        totalWins++;
+      } else {
+        totalLosses++;
+      }
+    });
+
+    // Paginate
+    const paginatedGames = allGames.slice(skip, skip + limit);
+    const hasMore = allGames.length > skip + limit;
 
     // ساخت آرایه تاریخچه
     const history = await Promise.all(
-      games.map(async (game) => {
+      paginatedGames.map(async (game) => {
         const isPlayer1 = game.player1 === userId;
         const opponentId = isPlayer1 ? game.player2 : game.player1;
 
@@ -46,7 +84,8 @@ export async function GET(req) {
 
         return {
           gameId: game._id,
-          gameName: "سنگ، کاغذ، قیچی",
+          gameName: game.gameType === "rps" ? "سنگ، کاغذ، قیچی" : "دوز",
+          gameType: game.gameType,
           opponent,
           winner: game.winner,
           createdAt: game.createdAt,
@@ -57,6 +96,18 @@ export async function GET(req) {
     return NextResponse.json({
       success: true,
       history,
+      stats: {
+        totalGames: allGames.length,
+        wins: totalWins,
+        losses: totalLosses,
+        draws: totalDraws,
+      },
+      pagination: {
+        page,
+        limit,
+        hasMore,
+        total: allGames.length,
+      },
     });
   } catch (error) {
     console.error("خطا در دریافت تاریخچه بازی:", error);

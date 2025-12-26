@@ -234,6 +234,11 @@ const startTurnTimer = (roomId, currentPlayer) => {
 // Function to save game result to database
 const saveGameResult = async (roomId, winner, moves) => {
   try {
+    const gameState = gameStates[roomId];
+    const betAmount = gameState?.betAmount || 0;
+    const isFreeGame = gameState?.isFreeGame || false;
+
+    // Save game result
     const response = await fetch(`${baseURL}/api/rps/save-result`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -248,10 +253,35 @@ const saveGameResult = async (roomId, winner, moves) => {
       const errorText = await response.text();
       console.error("Failed to save game result:", errorText);
       throw new Error(`Failed to save game result: ${errorText}`);
-    } else {
-      console.log("Game result saved successfully");
-      return true;
     }
+
+    // Process payout if it's a paid game and there's a winner
+    if (!isFreeGame && betAmount > 0 && winner) {
+      const loser = gameState.player1 === winner ? gameState.player2 : gameState.player1;
+
+      try {
+        const payoutResponse = await fetch(`${baseURL}/api/games/payout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId,
+            winnerId: winner,
+            loserId: loser,
+            betAmount,
+            gameType: "rps",
+          }),
+        });
+
+        if (!payoutResponse.ok) {
+          console.error("Failed to process payout");
+        }
+      } catch (payoutError) {
+        console.error("Error processing payout:", payoutError);
+      }
+    }
+
+    console.log("Game result saved successfully");
+    return true;
   } catch (error) {
     console.error("Error saving game result:", error);
     throw error;
@@ -292,7 +322,7 @@ const rpsSocket = (httpServer) => {
         }
       });
 
-      socket.on("findGame", () => handleFindGame(socket)); // حفظ findGame
+      socket.on("findGame", ({ betAmount, isFreeGame }) => handleFindGame(socket, betAmount, isFreeGame));
       socket.on("makeMove", ({ roomId, move }) =>
         handleMakeMove(socket, roomId, move)
       );
@@ -300,8 +330,8 @@ const rpsSocket = (httpServer) => {
       socket.on("cancelGame", () => handleDisconnect(socket));
 
       // New: Handle game invitations
-      socket.on("inviteFriend", ({ friendId, gameType, gameName, message }) =>
-        handleInviteFriend(socket, friendId, gameType, gameName, message)
+      socket.on("inviteFriend", ({ friendId, gameType, gameName, message, betAmount, isFreeGame }) =>
+        handleInviteFriend(socket, friendId, gameType, gameName, message, betAmount, isFreeGame)
       );
       socket.on("acceptInvitation", ({ invitationId }) =>
         handleAcceptInvitation(socket, invitationId)
@@ -309,6 +339,17 @@ const rpsSocket = (httpServer) => {
       socket.on("rejectInvitation", ({ invitationId }) =>
         handleRejectInvitation(socket, invitationId)
       );
+
+      // Handle game messages
+      socket.on("gameMessage", ({ roomId, gameType, message }) => {
+        if (gameType === "rps" && roomId) {
+          io.to(roomId).emit("gameMessage", {
+            message,
+            from: socket.userId,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      });
     });
     
     // Export io برای استفاده در socket های دیگر
@@ -317,7 +358,7 @@ const rpsSocket = (httpServer) => {
 };
 
 // New: Handle friend invitation
-const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سنگ کاغذ قیچی", message = "بیا بازی کنیم! 🎮") => {
+const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سنگ کاغذ قیچی", message = "بیا بازی کنیم! 🎮", betAmount = 0, isFreeGame = false) => {
   const inviterId = socket.userId;
 
   // Check if friend is online
@@ -344,6 +385,8 @@ const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سن
     gameType,
     gameName,
     message,
+    betAmount: Number(betAmount) || 0,
+    isFreeGame: Boolean(isFreeGame),
     timestamp: Date.now(),
   });
 
@@ -356,6 +399,8 @@ const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سن
     gameType,
     gameName,
     message,
+    betAmount,
+    isFreeGame,
   });
 
   io.to(onlineUsers[friendId].socketId).emit("gameInvitation", {
@@ -368,6 +413,8 @@ const handleInviteFriend = (socket, friendId, gameType = "rps", gameName = "سن
     gameType,
     gameName,
     message,
+    betAmount: Number(betAmount) || 0,
+    isFreeGame: Boolean(isFreeGame),
   });
 
   console.log("✅ Invitation sent to socket:", onlineUsers[friendId].socketId);
@@ -456,6 +503,8 @@ const handleAcceptInvitation = async (socket, invitationId) => {
         roomId,
         player1: inviterUserId,
         player2: accepterId,
+        betAmount: invitation.betAmount || 0,
+        isFreeGame: invitation.isFreeGame || false,
         isInvitation: true,
       }),
     });
@@ -492,7 +541,9 @@ const handleAcceptInvitation = async (socket, invitationId) => {
         player2: accepterId,
         points: { [inviterUserId]: 0, [accepterId]: 0 },
         moves: [],
-        gameFinished: false
+        gameFinished: false,
+        betAmount: invitation.betAmount || 0,
+        isFreeGame: invitation.isFreeGame || false,
       };
 
       // Start timer for first player
@@ -565,9 +616,22 @@ const handleRejectInvitation = (socket, invitationId) => {
 };
 
 // find opponent & create a room
-const handleFindGame = async (socket) => {
+const handleFindGame = async (socket, betAmount = 0, isFreeGame = false) => {
   if (waitingPlayer) {
-    console.log(waitingPlayer);
+    // Check if both players have the same bet amount
+    const waitingPlayerBet = Number(waitingPlayer.betAmount) || 0;
+    const waitingPlayerIsFree = Boolean(waitingPlayer.isFreeGame);
+    const currentPlayerBet = Number(betAmount) || 0;
+    const currentPlayerIsFree = Boolean(isFreeGame);
+
+    // Both players must have the same bet settings
+    if (waitingPlayerBet !== currentPlayerBet || waitingPlayerIsFree !== currentPlayerIsFree) {
+      socket.emit("betMismatch", {
+        message: "مبلغ شرط با حریف مطابقت ندارد",
+      });
+      return;
+    }
+
     const roomId = `room-${waitingPlayer.userId}-${
       socket.userId
     }-${Date.now()}`;
@@ -580,12 +644,26 @@ const handleFindGame = async (socket) => {
           roomId,
           player1: waitingPlayer.userId,
           player2: socket.userId,
+          betAmount: currentPlayerBet,
+          isFreeGame: currentPlayerIsFree,
         }),
       });
 
       if (createRoomRes.ok) {
-        // جوین کردن سوکت‌ها به اتاق
-        waitingPlayer.join(roomId);
+        const responseData = await createRoomRes.json();
+        
+        // Check if there's an error in the response
+        if (responseData.error) {
+          throw new Error(responseData.error);
+        }
+        
+        // Get the actual socket for waiting player
+        const waitingPlayerSocket = io.sockets.sockets.get(waitingPlayer.id);
+        if (!waitingPlayerSocket) {
+          throw new Error("Waiting player socket not found");
+        }
+        
+        waitingPlayerSocket.join(roomId);
         socket.join(roomId);
 
         io.to(waitingPlayer.id).emit("gameFound", {
@@ -600,7 +678,7 @@ const handleFindGame = async (socket) => {
         });
 
         gameMoves[roomId] = {};
-        playerTurn[roomId] = waitingPlayer.userId; // نوبت بازیکن اول
+        playerTurn[roomId] = waitingPlayer.userId;
         
         // Initialize game state
         gameStates[roomId] = {
@@ -608,7 +686,9 @@ const handleFindGame = async (socket) => {
           player2: socket.userId,
           points: { [waitingPlayer.userId]: 0, [socket.userId]: 0 },
           moves: [],
-          gameFinished: false
+          gameFinished: false,
+          betAmount: currentPlayerBet,
+          isFreeGame: currentPlayerIsFree,
         };
 
       // Start timer for first player
@@ -622,11 +702,18 @@ const handleFindGame = async (socket) => {
 
       waitingPlayer = null;
     } catch (error) {
-      console.error("❌ Error creating game room:");
+      console.error("❌ Error creating game room:", error);
+      socket.emit("gameError", {
+        message: "خطا در ایجاد اتاق بازی",
+      });
     }
   } else {
     console.log("waitingPlayer");
-    waitingPlayer = socket;
+    waitingPlayer = {
+      ...socket,
+      betAmount: Number(betAmount) || 0,
+      isFreeGame: Boolean(isFreeGame),
+    };
     socket.emit("waiting");
   }
 };

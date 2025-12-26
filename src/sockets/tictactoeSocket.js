@@ -74,6 +74,11 @@ const checkWinner = (board) => {
 
 const saveGameResult = async (roomId, winner, moves) => {
   try {
+    const gameState = gameStates[roomId];
+    const betAmount = gameState?.betAmount || 0;
+    const isFreeGame = gameState?.isFreeGame || false;
+
+    // Save game result
     const response = await fetch(`${baseURL}/api/tictactoe/save-result`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,6 +91,31 @@ const saveGameResult = async (roomId, winner, moves) => {
 
     if (!response.ok) {
       throw new Error("Failed to save game result");
+    }
+
+    // Process payout if it's a paid game and there's a winner
+    if (!isFreeGame && betAmount > 0 && winner) {
+      const loser = gameState.player1 === winner ? gameState.player2 : gameState.player1;
+
+      try {
+        const payoutResponse = await fetch(`${baseURL}/api/games/payout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId,
+            winnerId: winner,
+            loserId: loser,
+            betAmount,
+            gameType: "tictactoe",
+          }),
+        });
+
+        if (!payoutResponse.ok) {
+          console.error("Failed to process payout");
+        }
+      } catch (payoutError) {
+        console.error("Error processing payout:", payoutError);
+      }
     }
   } catch (error) {
     console.error("Error saving game result:", error);
@@ -120,7 +150,7 @@ const tictactoeSocket = (httpServer, sharedIO, sharedOnlineUsers) => {
 const setupTicTacToeHandlers = (socket) => {
   console.log(`🟣 TicTacToe user connected: ${socket.id}`);
 
-      socket.on("findTicTacToeGame", () => handleFindGame(socket));
+      socket.on("findTicTacToeGame", ({ betAmount, isFreeGame }) => handleFindGame(socket, betAmount, isFreeGame));
       socket.on("tttMakeMove", ({ roomId, index, symbol, userId }) =>
         handleMakeMove(socket, roomId, index, symbol, userId)
       );
@@ -159,6 +189,17 @@ const setupTicTacToeHandlers = (socket) => {
         });
       });
 
+      // Handle game messages
+      socket.on("gameMessage", ({ roomId, gameType, message }) => {
+        if (gameType === "tictactoe" && roomId) {
+          io.to(roomId).emit("gameMessage", {
+            message,
+            from: socket.userId,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      });
+
       socket.on("disconnect", () => {
         if (waitingPlayer && waitingPlayer.id === socket.id) {
           waitingPlayer = null;
@@ -190,8 +231,22 @@ const setupTicTacToeHandlers = (socket) => {
       });
 };
 
-const handleFindGame = async (socket) => {
+const handleFindGame = async (socket, betAmount = 0, isFreeGame = false) => {
   if (waitingPlayer) {
+    // Check if both players have the same bet amount
+    const waitingPlayerBet = Number(waitingPlayer.betAmount) || 0;
+    const waitingPlayerIsFree = Boolean(waitingPlayer.isFreeGame);
+    const currentPlayerBet = Number(betAmount) || 0;
+    const currentPlayerIsFree = Boolean(isFreeGame);
+
+    // Both players must have the same bet settings
+    if (waitingPlayerBet !== currentPlayerBet || waitingPlayerIsFree !== currentPlayerIsFree) {
+      socket.emit("betMismatch", {
+        message: "مبلغ شرط با حریف مطابقت ندارد",
+      });
+      return;
+    }
+
     const roomId = `ttt-room-${waitingPlayer.userId}-${socket.userId}-${Date.now()}`;
 
     try {
@@ -202,11 +257,26 @@ const handleFindGame = async (socket) => {
           roomId,
           player1: waitingPlayer.userId,
           player2: socket.userId,
+          betAmount: currentPlayerBet,
+          isFreeGame: currentPlayerIsFree,
         }),
       });
 
       if (createRoomRes.ok) {
-        waitingPlayer.join(roomId);
+        const responseData = await createRoomRes.json();
+        
+        // Check if there's an error in the response
+        if (responseData.error) {
+          throw new Error(responseData.error);
+        }
+        
+        // Get the actual socket for waiting player
+        const waitingPlayerSocket = io.sockets.sockets.get(waitingPlayer.id);
+        if (!waitingPlayerSocket) {
+          throw new Error("Waiting player socket not found");
+        }
+        
+        waitingPlayerSocket.join(roomId);
         socket.join(roomId);
 
         const initialBoard = Array(9).fill(null);
@@ -224,6 +294,8 @@ const handleFindGame = async (socket) => {
           moves: [],
           gameFinished: false,
           currentRound: 1,
+          betAmount: currentPlayerBet,
+          isFreeGame: currentPlayerIsFree,
         };
 
         io.to(waitingPlayer.id).emit("tttGameFound", {
@@ -247,9 +319,16 @@ const handleFindGame = async (socket) => {
       waitingPlayer = null;
     } catch (error) {
       console.error("❌ Error creating TicTacToe room:", error);
+      socket.emit("gameError", {
+        message: "خطا در ایجاد اتاق بازی",
+      });
     }
   } else {
-    waitingPlayer = socket;
+    waitingPlayer = {
+      ...socket,
+      betAmount: Number(betAmount) || 0,
+      isFreeGame: Boolean(isFreeGame),
+    };
     socket.emit("waiting");
   }
 };

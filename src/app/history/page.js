@@ -6,32 +6,61 @@ import { getData } from "@/services/API";
 import Background from "@/components/chessboard/Background";
 import Navbar from "@/components/navbar/Navbar";
 import Image from "next/image";
-import { Spinner } from "@heroui/react";
+import { Spinner, Button } from "@heroui/react";
 import { toFarsiNumber } from "@/helper/helper";
+import { Icon } from "@iconify/react";
 
 const HistoryPage = () => {
   const { user } = useUser();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     if (user) {
-      getData("/games-history")
-        .then((res) => {
-          if (res.data.success) {
-            setHistory(res.data.history || []);
-          }
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error("خطا در دریافت تاریخچه:", err);
-          setLoading(false);
-        });
+      fetchHistory(1, true);
     }
   }, [user]);
 
+  const fetchHistory = async (pageNum = 1, reset = false) => {
+    if (reset) {
+      setLoading(true);
+      setPage(1);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const res = await getData(`/games-history?page=${pageNum}&limit=10`);
+      if (res.data.success) {
+        if (reset) {
+          setHistory(res.data.history || []);
+        } else {
+          setHistory((prev) => [...prev, ...(res.data.history || [])]);
+        }
+        setHasMore(res.data.pagination?.hasMore || false);
+        setStats(res.data.stats);
+        setPage(pageNum);
+      }
+    } catch (err) {
+      console.error("خطا در دریافت تاریخچه:", err);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchHistory(page + 1, false);
+    }
+  };
+
   const getResultBadge = (winner, userId) => {
-    if (!winner) {
+    if (!winner || winner === "draw") {
       return (
         <span className="rounded-full border border-gray-400/40 bg-gray-500/10 px-2.5 py-1 text-[10px] font-medium text-gray-400">
           مساوی
@@ -50,6 +79,13 @@ const HistoryPage = () => {
         بازنده
       </span>
     );
+  };
+
+  const getGameIcon = (gameType) => {
+    if (gameType === "tictactoe") {
+      return "/tic-tac-toe.png";
+    }
+    return "/rock-paper-scissors.png";
   };
 
   const formatDate = (date) => {
@@ -99,6 +135,42 @@ const HistoryPage = () => {
           تمام بازی‌های گذشته شما
         </p>
       </div>
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="w-full grid grid-cols-3 gap-2 z-10">
+          <div className="relative w-full rounded-2xl p-[1px] bg-gradient-to-b from-emerald-400/30 via-emerald-400/10 to-transparent">
+            <div className="relative rounded-2xl bg-secondaryDarkTheme/80 backdrop-blur-sm p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-gray-400">برد</span>
+                <span className="text-lg font-bold text-emerald-400">
+                  {toFarsiNumber(stats.wins.toString())}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="relative w-full rounded-2xl p-[1px] bg-gradient-to-b from-red-400/30 via-red-400/10 to-transparent">
+            <div className="relative rounded-2xl bg-secondaryDarkTheme/80 backdrop-blur-sm p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-gray-400">باخت</span>
+                <span className="text-lg font-bold text-red-400">
+                  {toFarsiNumber(stats.losses.toString())}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="relative w-full rounded-2xl p-[1px] bg-gradient-to-b from-gray-400/30 via-gray-400/10 to-transparent">
+            <div className="relative rounded-2xl bg-secondaryDarkTheme/80 backdrop-blur-sm p-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-gray-400">مساوی</span>
+                <span className="text-lg font-bold text-gray-400">
+                  {toFarsiNumber(stats.draws.toString())}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History List */}
       <div className="w-full flex flex-col gap-3 z-10">
@@ -152,7 +224,7 @@ const HistoryPage = () => {
                   <div className="absolute -inset-1 rounded-xl bg-blueColor/20 blur-md group-hover:bg-blueColor/30 transition-colors" />
                   <div className="relative size-12 rounded-xl bg-primaryDarkTheme/50 flex items-center justify-center border border-white/5">
                     <Image
-                      src={"/rock-paper-scissors.png"}
+                      src={getGameIcon(game.gameType)}
                       width={40}
                       height={40}
                       alt={game.gameName}
@@ -213,6 +285,28 @@ const HistoryPage = () => {
               </div>
             </div>
           ))
+        )}
+
+        {/* Load More Button */}
+        {hasMore && (
+          <div className="w-full flex justify-center mt-2">
+            <Button
+              onClick={loadMore}
+              isLoading={loadingMore}
+              className="bg-blueColor text-white font-medium transition-all duration-300"
+            >
+              {loadingMore ? (
+                <>
+                  <Spinner size="sm" color="white" className="mr-2" />
+                  در حال بارگذاری...
+                </>
+              ) : (
+                <>
+                  نمایش بیشتر
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
     </div>

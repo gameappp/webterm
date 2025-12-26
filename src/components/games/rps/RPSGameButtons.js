@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { getSocket } from "@/lib/socket";
+import GameChat from "@/components/games/GameChat";
+import { useUser } from "@/store/useUser";
 
 const socket = getSocket();
 
@@ -17,6 +19,7 @@ const movesHand = {
 };
 
 const RPSGameButtons = ({ roomId, roomInfo, user }) => {
+  const { refreshBalance } = useUser();
   const [gameResult, setGameResult] = useState(null);
   const [selectedMove, setSelectedMove] = useState({});
   const [turn, setTurn] = useState(roomInfo?.host?._id === user._id);
@@ -200,7 +203,7 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
     });
 
     // Listen for game finished event from server
-    socket.on("gameFinished", ({ winner, finalPoints, totalMoves, saveError }) => {
+    socket.on("gameFinished", async ({ winner, finalPoints, totalMoves, saveError }) => {
       setPlayersMoves(totalMoves);
       setPoints({
         me: finalPoints[user._id] || 0,
@@ -225,6 +228,11 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
           },
         });
       }
+
+      // Refresh balance after game ends
+      setTimeout(() => {
+        refreshBalance();
+      }, 1000);
     });
 
     // Listen for opponent disconnection
@@ -529,6 +537,9 @@ const RPSGameButtons = ({ roomId, roomInfo, user }) => {
           </div>
         </div>
       </div>
+
+      {/* Game Chat */}
+      <GameChat roomId={roomId} gameType="rps" />
     </div>
   );
 };

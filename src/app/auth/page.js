@@ -13,7 +13,7 @@ import toast, { Toaster } from "react-hot-toast";
 
 const page = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formType, setFormType] = useState("register");
+  const [formType, setFormType] = useState("login");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { setUser } = useUser();
@@ -59,6 +59,16 @@ const page = () => {
         setUser(res.data.user);
       })
       .catch((err) => {
+        const errorMessage = err?.response?.data?.error || err?.response?.data?.message || "خطا در ثبت نام. لطفا دوباره تلاش کنید.";
+        toast.error(errorMessage, {
+          duration: 4000,
+          style: {
+            borderRadius: "10px",
+            background: "#040e1c",
+            color: "#fff",
+            fontSize: "14px",
+          },
+        });
         setLoading(false);
       });
   };
@@ -82,7 +92,9 @@ const page = () => {
         setUser(res.data.user);
       })
       .catch((err) => {
-        toast.error(err.response.data.message, {
+        const errorMessage = err?.response?.data?.message || err?.response?.data?.error || "خطا در ورود. لطفا دوباره تلاش کنید.";
+        toast.error(errorMessage, {
+          duration: 4000,
           style: {
             borderRadius: "10px",
             background: "#040e1c",
@@ -117,25 +129,29 @@ const page = () => {
           گیم هاب
         </h1>
 
-        <p className="text-sm bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
-          بازی شطرنج آنلاین فرصتی عالی برای رقابت و لذت بردن از یک تجربه شطرنج
-          هیجان‌انگیز است. می‌توانید با دوستان خود بازی کنید، رقابت‌های دوستانه
-          داشته باشید یا در حالت شرط‌بندی مهارت‌های خود را محک بزنید. این بازی
-          با طراحی جذاب و فضای رقابتی، شما را به چالش می‌کشد و لحظات
-          هیجان‌انگیزی را برایتان رقم می‌زند.
+        <p className="text-sm bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent text-center leading-relaxed">
+          پلتفرم بازی آنلاین با بازی‌های متنوع: سنگ کاغذ قیچی، دوز و شطرنج
         </p>
 
-        <p className="text-sm text-blueColor mt-3">
-          آماده‌اید که قدرت تفکر خود را در برابر دیگران به چالش بکشید؟
-        </p>
+        <div className="flex flex-col gap-2 mt-3 text-center">
+          <p className="text-sm text-gray-300 leading-relaxed">
+            🎮 <span className="text-emerald-400 font-medium">بازی رایگان</span> انجام دهید و مهارت‌های خود را محک بزنید
+          </p>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            💰 یا در <span className="text-blueColor font-medium">بازی‌های شرطی</span> شرکت کنید و با تخصص خود <span className="text-yellow-400 font-medium">پول برنده شوید</span>
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            با دوستان خود بازی کنید و لحظات هیجان‌انگیزی را تجربه کنید
+          </p>
+        </div>
 
         {formType === "register" ? (
-          <div className="w-full flex flex-col items-center gap-4 mt-4">
-            <h2 className="text-xl font-black bg-gradient-to-b from-white to-gray-600 bg-clip-text text-transparent mt-4">
+          <div className="w-full flex flex-col items-center gap-5 mt-6">
+            <h2 className="text-2xl font-black bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
               ثبت نام و ورود به بازی
             </h2>
 
-            <div className="w-full flex flex-col gap-3">
+            <div className="w-full flex flex-col gap-4 bg-secondaryDarkTheme/50 backdrop-blur-xl rounded-2xl p-5 border border-white/10 shadow-xl">
               <Input
                 type="text"
                 label="نام نمایشی"
@@ -143,10 +159,10 @@ const page = () => {
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 isInvalid={errors.nickName ? true : false}
                 errorMessage={errors?.nickName?.message}
@@ -163,8 +179,8 @@ const page = () => {
                 label={
                   <>
                     <span>نام کاربری</span>
-                    <span className="text-[11px] text-gray-400 pr-1">
-                      (نام کاربری بصورت حروف انگلیسی میباشد)
+                    <span className="text-[11px] text-gray-400 pr-1 font-normal">
+                      (فقط حروف انگلیسی)
                     </span>
                   </>
                 }
@@ -172,10 +188,10 @@ const page = () => {
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 isInvalid={errors.userName ? true : false}
                 errorMessage={errors?.userName?.message}
@@ -189,31 +205,22 @@ const page = () => {
 
               <Input
                 type="text"
-                label={
-                  <>
-                    <span>شماره تلفن</span>
-                    <span className="text-[11px] text-gray-400 pr-1">
-                      (اختیاری)
-                    </span>
-                  </>
-                }
+                label="شماره تلفن"
                 placeholder="شماره تلفن خود را وارد کنید"
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 isInvalid={errors.phoneNumber ? true : false}
                 errorMessage={errors?.phoneNumber?.message}
                 {...register("phoneNumber", {
                   validate: {
-                    isRequired: (value) =>
-                      value.length > 0 || "شماره تلفن اجباری میباشد",
                     isNumber: (value) =>
-                      /^[0-9\b]+$/.test(value) ||
+                      !value || /^[0-9\b]+$/.test(value) ||
                       "فرمت شماره تلفن صحیح نمیباشد",
                   },
                 })}
@@ -225,14 +232,14 @@ const page = () => {
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 endContent={
                   <button
-                    className="focus:outline-none"
+                    className="focus:outline-none hover:opacity-80 transition-opacity"
                     type="button"
                     onClick={showPasswordToggle}
                     aria-label="toggle password visibility"
@@ -244,7 +251,7 @@ const page = () => {
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
                         stroke="currentColor"
-                        className="size-4 text-gray-400"
+                        className="size-5 text-gray-400"
                       >
                         <path
                           strokeLinecap="round"
@@ -259,7 +266,7 @@ const page = () => {
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
                         stroke="currentColor"
-                        className="size-4 text-gray-400"
+                        className="size-5 text-gray-400"
                       >
                         <path
                           strokeLinecap="round"
@@ -297,41 +304,41 @@ const page = () => {
               <Button
                 isLoading={loading}
                 onClick={handleSubmit(userRegisterHandler)}
-                className="mt-2 !bg-blueColor text-white !shadow-none"
+                className="mt-2 !bg-blueColor text-white !shadow-none hover:!bg-blueColor/90 transition-all font-semibold py-6"
+                size="lg"
               >
                 ثبت نام و ورود
               </Button>
 
-              <button
-                onClick={() => setFormType("login")}
-                className="text-sm bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent"
-              >
-                از قبل حساب دارید ؟ وارد شوید
-              </button>
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <span className="text-sm text-gray-400">از قبل حساب دارید؟</span>
+                <button
+                  onClick={() => setFormType("login")}
+                  className="text-sm text-blueColor font-semibold hover:text-blueColor/80 transition-colors"
+                >
+                  وارد شوید
+                </button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="w-full flex flex-col items-center gap-4 mt-4">
-            <h2 className="text-xl font-black bg-gradient-to-b from-white to-gray-600 bg-clip-text text-transparent mt-4">
+          <div className="w-full flex flex-col items-center gap-5 mt-6">
+            <h2 className="text-2xl font-black bg-gradient-to-b from-white to-gray-400 bg-clip-text text-transparent">
               ورود به بازی
             </h2>
 
-            <div className="w-full flex flex-col gap-3">
+            <div className="w-full flex flex-col gap-4 bg-secondaryDarkTheme/50 backdrop-blur-xl rounded-2xl p-5 border border-white/10 shadow-xl">
               <Input
                 type="text"
-                label={
-                  <>
-                    <span>نام کاربری</span>
-                  </>
-                }
+                label="نام کاربری"
                 placeholder="نام کاربری خود را وارد کنید"
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 isInvalid={errors.userName ? true : false}
                 errorMessage={errors?.userName?.message}
@@ -349,14 +356,14 @@ const page = () => {
                 variant="bordered"
                 labelPlacement="outside"
                 classNames={{
-                  label: "!text-gray-200 -bottom-0",
-                  input: "placeholder:text-xs",
+                  label: "!text-gray-200 -bottom-0 text-sm font-medium",
+                  input: "placeholder:text-xs text-white",
                   inputWrapper:
-                    "!bg-secondaryDarkTheme focus-within:!border-borderColor !shadow-none !border-none",
+                    "!bg-primaryDarkTheme/50 focus-within:!border-blueColor !shadow-none !border border-white/10 hover:border-white/20 transition-colors",
                 }}
                 endContent={
                   <button
-                    className="focus:outline-none"
+                    className="focus:outline-none hover:opacity-80 transition-opacity"
                     type="button"
                     onClick={showPasswordToggle}
                     aria-label="toggle password visibility"
@@ -368,7 +375,7 @@ const page = () => {
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
                         stroke="currentColor"
-                        className="size-4 text-gray-400"
+                        className="size-5 text-gray-400"
                       >
                         <path
                           strokeLinecap="round"
@@ -383,7 +390,7 @@ const page = () => {
                         viewBox="0 0 24 24"
                         strokeWidth="1.5"
                         stroke="currentColor"
-                        className="size-4 text-gray-400"
+                        className="size-5 text-gray-400"
                       >
                         <path
                           strokeLinecap="round"
@@ -413,10 +420,21 @@ const page = () => {
               <Button
                 isLoading={loading}
                 onClick={handleSubmit(userLoginHandler)}
-                className="mt-2 !bg-blueColor text-white !shadow-none"
+                className="mt-2 !bg-blueColor text-white !shadow-none hover:!bg-blueColor/90 transition-all font-semibold py-6"
+                size="lg"
               >
-                ورود
+                ورود به بازی
               </Button>
+
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <span className="text-sm text-gray-400">حساب ندارید؟</span>
+                <button
+                  onClick={() => setFormType("register")}
+                  className="text-sm text-blueColor font-semibold hover:text-blueColor/80 transition-colors"
+                >
+                  ثبت نام کنید
+                </button>
+              </div>
             </div>
           </div>
         )}

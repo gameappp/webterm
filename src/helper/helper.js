@@ -55,4 +55,17 @@ const verifyToken = (token) => {
   }
 };
 
-export { getGreeting, toFarsiNumber, getSquareColor, idGenerator, verifyToken };
+// Calculate rank based on totalScore
+// Rank thresholds: 1=0, 2=100, 3=300, 4=600, 5=1000, 6=1500, 7=2200, 8=3000+
+const calculateRank = (totalScore) => {
+  if (totalScore >= 3000) return 8; // الماس
+  if (totalScore >= 2200) return 7; // یاقوت
+  if (totalScore >= 1500) return 6; // زمرد
+  if (totalScore >= 1000) return 5; // فیروزه
+  if (totalScore >= 600) return 4; // مرمر
+  if (totalScore >= 300) return 3; // یشم
+  if (totalScore >= 100) return 2; // اوپال
+  return 1; // کهربا
+};
+
+export { getGreeting, toFarsiNumber, getSquareColor, idGenerator, verifyToken, calculateRank };

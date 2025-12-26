@@ -7,6 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useContext, useEffect, useState, useCallback, useRef } from "react";
 import toast from "react-hot-toast";
+import { toFarsiNumber } from "@/helper/helper";
 
 const GameInvitationNotification = () => {
   const { socket } = useContext(SocketContextData);
@@ -95,6 +96,8 @@ const GameInvitationNotification = () => {
     switch (gameType) {
       case "rps":
         return "/rock-paper-scissors.png";
+      case "tictactoe":
+        return "/tic-tac-toe.png";
       case "chess":
         return "/chess.png";
       case "poker":
@@ -170,7 +173,11 @@ const GameInvitationNotification = () => {
                     <p className="text-sm font-semibold text-white">
                       {invitation.gameName}
                     </p>
-                    <p className="text-xs text-gray-400">بازی پیشنهادی</p>
+                    <p className="text-xs text-gray-400">
+                      {invitation.isFreeGame 
+                        ? "بازی رایگان" 
+                        : `مبلغ شرط: ${toFarsiNumber((invitation.betAmount || 0).toString())} تومان`}
+                    </p>
                   </div>
                 </div>
 

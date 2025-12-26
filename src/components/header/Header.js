@@ -27,7 +27,8 @@ export const ranks = [
 
 const Header = () => {
   const { user } = useUser();
-  const userRank = ranks[0];
+  const userRankIndex = (user?.rank || 1) - 1; // rank is 1-8, array index is 0-7
+  const userRank = ranks[userRankIndex] || ranks[0];
 
   return (
     <div className="w-full flex flex-col gap-3">
@@ -81,16 +82,26 @@ const Header = () => {
       </div>
 
       {/* rank badge */}
-      <div className="w-full rounded-2xl p-[1px] bg-gradient-to-b from-blueColor/40 via-blueColor/20 to-blueColor/40 shadow-[0_0_20px_rgba(15,23,42,0.8)]">
-        <div className="h-full flex items-center justify-between rounded-2xl bg-secondaryDarkTheme/95 px-4">
-          <span className="text-sm font-medium text-white flex items-center gap-2">
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            {userRank.name}
-          </span>
+      <Link
+        href="/leaderboard"
+        className="w-full rounded-2xl p-[1px] bg-gradient-to-b from-blueColor/40 via-blueColor/20 to-blueColor/40 shadow-[0_0_20px_rgba(15,23,42,0.8)] hover:from-blueColor/50 hover:via-blueColor/30 hover:to-blueColor/50 transition-all duration-300 group"
+      >
+        <div className="h-full flex items-center justify-between rounded-2xl bg-secondaryDarkTheme/95 px-4 cursor-pointer">
+          <div className="flex items-center gap-2">
+            <Icon
+              icon="solar:trophy-linear"
+              width={18}
+              height={18}
+              className="text-yellow-400 group-hover:scale-110 transition-transform"
+            />
+            <span className="text-sm font-medium text-white">
+              {userRank.name}
+            </span>
+          </div>
 
-          <div className="flex items-center">
-            <span className="block -mr-1 text-sm text-white">
-              {toFarsiNumber(10)}
+          <div className="flex items-center gap-2">
+            <span className="block text-sm text-emerald-400 font-medium">
+              {toFarsiNumber((user?.totalScore || 0).toString())}
             </span>
 
             <div className="relative w-10 h-10">
@@ -112,7 +123,7 @@ const Header = () => {
             </div>
           </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 };

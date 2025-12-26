@@ -32,7 +32,7 @@ const FriendRequests = ({ data }) => {
           openDrawer ? "bottom-0" : "-bottom-full"
         } w-full max-h-[80vh] right-0 bg-primaryDarkTheme absolute z-50 rounded-t-3xl transition-all duration-300 shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
       >
-        <div className="w-full h-full p-5 relative flex flex-col gap-4 pt-12 overflow-y-auto">
+        <div className="w-full h-full p-5 pb-28 relative flex flex-col gap-4 pt-12 overflow-y-auto">
           <span className="w-20 h-1.5 rounded-full bg-gray-600 absolute top-4 left-2/4 -translate-x-2/4 block"></span>
 
           <div className="flex items-center justify-between">

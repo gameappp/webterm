@@ -15,7 +15,7 @@ const FriendItem = ({ userInfo }) => {
 
   const isOnline = onlineUsers.some((item) => item.userId === userInfo._id);
 
-  const handleSendInvite = ({ gameType, gameName, message }) => {
+  const handleSendInvite = ({ gameType, gameName, message, betAmount, isFreeGame }) => {
     return new Promise((resolve, reject) => {
       setSending(true);
 
@@ -80,6 +80,8 @@ const FriendItem = ({ userInfo }) => {
         gameType,
         gameName,
         message,
+        betAmount,
+        isFreeGame,
         socketConnected: socket.connected,
         socketId: socket.id,
       });
@@ -89,6 +91,8 @@ const FriendItem = ({ userInfo }) => {
         gameType,
         gameName,
         message,
+        betAmount: betAmount || 0,
+        isFreeGame: isFreeGame || false,
       });
     });
   };

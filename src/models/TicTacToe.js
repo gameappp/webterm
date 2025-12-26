@@ -10,6 +10,8 @@ const TicTacToeSchema = new Schema({
     default: [],
   },
   winner: { type: String, default: null },
+  betAmount: { type: Number, default: 0 },
+  isFreeGame: { type: Boolean, default: false },
   createdAt: { type: Date, default: () => Date.now() },
 });
 

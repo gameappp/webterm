@@ -52,6 +52,7 @@ export async function POST(req) {
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1 year in seconds
     });
 
     const response = NextResponse.json(

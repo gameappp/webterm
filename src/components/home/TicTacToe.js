@@ -8,12 +8,14 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { getSocket } from "@/lib/socket";
+import BetSelectionModal from "@/components/games/BetSelectionModal";
 
 const socket = getSocket();
 
 const TicTacToe = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [gameInfo, setGameInfo] = useState({});
+  const [isBetModalOpen, setIsBetModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -50,12 +52,33 @@ const TicTacToe = ({ user }) => {
       }
     );
 
-    return () => socket.off();
+    socket.on("betMismatch", ({ message }) => {
+      setLoading(false);
+      toast.error(message || "مبلغ شرط با حریف مطابقت ندارد", {
+        duration: 3000,
+        style: {
+          borderRadius: "10px",
+          background: "#040e1c",
+          color: "#fff",
+          fontSize: "14px",
+        },
+      });
+    });
+
+    return () => {
+      socket.off("tttGameFound");
+      socket.off("betMismatch");
+    };
   }, []);
 
-  const findGameHandler = () => {
+  const handleBetSelected = (betAmount, isFreeGame) => {
     setLoading(true);
-    socket.emit("findTicTacToeGame", { userId: user._id });
+    setIsBetModalOpen(false);
+    socket.emit("findTicTacToeGame", { betAmount, isFreeGame });
+  };
+
+  const findGameHandler = () => {
+    setIsBetModalOpen(true);
   };
 
   const cancelGameFindingHandler = () => {
@@ -63,11 +86,18 @@ const TicTacToe = ({ user }) => {
     socket.emit("cancelTicTacToeGame");
   };
 
-  const isYou = gameInfo?.playerTurn?.userId === user?._id ? "شما" : "حریف";
+  const playerTurnLabel = gameInfo?.playerTurn?.userId === user?._id ? "شما" : "حریف";
+  const opponentLabel = gameInfo?.opponent?.userId === user?._id ? "شما" : "حریف";
 
   return (
     <>
       <Toaster />
+      <BetSelectionModal
+        isOpen={isBetModalOpen}
+        onClose={() => setIsBetModalOpen(false)}
+        onBetSelected={handleBetSelected}
+        gameType="tictactoe"
+      />
 
       {(loading || gameInfo?.roomId) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -128,6 +158,7 @@ const TicTacToe = ({ user }) => {
                   </h3>
 
                   <div className="flex items-center gap-8">
+                    {/* playerTurn */}
                     <div className="flex flex-col items-center gap-2 slide-up-2">
                       <div className="relative">
                         <div className="absolute -inset-1 rounded-2xl bg-purple-500/40 blur-md" />
@@ -139,7 +170,7 @@ const TicTacToe = ({ user }) => {
                           className="relative size-16 rounded-2xl border border-white/10 shadow-lg"
                         />
                       </div>
-                      <span className="text-[11px] text-gray-400">{isYou}</span>
+                      <span className="text-[11px] text-gray-400">{playerTurnLabel}</span>
                       <span className="text-xs font-medium text-white">
                         {gameInfo?.playerTurn?.nickName}
                       </span>
@@ -150,6 +181,7 @@ const TicTacToe = ({ user }) => {
                       <div className="h-7 w-px bg-gradient-to-b from-transparent via-gray-500/50 to-transparent" />
                     </div>
 
+                    {/* opponent */}
                     <div className="flex flex-col items-center gap-2 slide-down-2">
                       <div className="relative">
                         <div className="absolute -inset-1 rounded-2xl bg-emerald-400/40 blur-md" />
@@ -161,7 +193,7 @@ const TicTacToe = ({ user }) => {
                           className="relative size-16 rounded-2xl border border-white/10 shadow-lg"
                         />
                       </div>
-                      <span className="text-[11px] text-gray-400">{isYou}</span>
+                      <span className="text-[11px] text-gray-400">{opponentLabel}</span>
                       <span className="text-xs font-medium text-white">
                         {gameInfo?.opponent?.nickName}
                       </span>
@@ -185,105 +217,18 @@ const TicTacToe = ({ user }) => {
         className="relative w-full h-36 rounded-3xl p-[1px] group bg-gradient-to-b from-blueColor/40 via-blueColor/10 to-transparent hover:from-blueColor/70 hover:via-blueColor/20 transition-all duration-300 shadow-[0_0_25px_rgba(15,23,42,0.9)] hover:shadow-[0_0_35px_rgba(59,130,246,0.7)]"
       >
         <div className="relative w-full h-full flex flex-col justify-center items-center gap-2 rounded-3xl bg-secondaryDarkTheme/95 backdrop-blur-xl transition-all duration-300 group-hover:bg-secondaryDarkTheme group-hover:-translate-y-1 group-hover:text-blueColor">
-          <span className="absolute top-2 left-2 rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-[2px] text-[9px] font-medium text-purple-300">
+          <div className="size-14 flex items-center justify-center">
+            <Image
+              src={"/tic-tac-toe.png"}
+              width={56}
+              height={56}
+              alt="دوز"
+              className="drop-shadow-[0_0_18px_rgba(168,85,247,0.6)] group-hover:scale-110 transition-transform duration-300"
+            />
+          </div>
+          <span className="absolute top-2 left-2 rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-[2px] text-[9px] font-medium text-purple-300 z-20">
             آنلاین
           </span>
-          <div className="relative size-14 flex items-center justify-center">
-            <svg
-              width="56"
-              height="56"
-              viewBox="0 0 56 56"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="drop-shadow-[0_0_18px_rgba(168,85,247,0.6)] group-hover:scale-110 transition-transform duration-300"
-            >
-              <line
-                x1="18.67"
-                y1="0"
-                x2="18.67"
-                y2="56"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-purple-400"
-              />
-              <line
-                x1="37.33"
-                y1="0"
-                x2="37.33"
-                y2="56"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-purple-400"
-              />
-              <line
-                x1="0"
-                y1="18.67"
-                x2="56"
-                y2="18.67"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-purple-400"
-              />
-              <line
-                x1="0"
-                y1="37.33"
-                x2="56"
-                y2="37.33"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="text-purple-400"
-              />
-              <line
-                x1="6"
-                y1="6"
-                x2="13.33"
-                y2="13.33"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                className="text-blueColor"
-              />
-              <line
-                x1="13.33"
-                y1="6"
-                x2="6"
-                y2="13.33"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                className="text-blueColor"
-              />
-              <circle
-                cx="28"
-                cy="28"
-                r="5.5"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                fill="none"
-                className="text-emerald-400"
-              />
-              <line
-                x1="42.67"
-                y1="42.67"
-                x2="50"
-                y2="50"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                className="text-blueColor"
-              />
-              <line
-                x1="50"
-                y1="42.67"
-                x2="42.67"
-                y2="50"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                className="text-blueColor"
-              />
-            </svg>
-          </div>
           <span className="text-xs font-semibold text-white group-hover:text-blueColor">
             دوز
           </span>
@@ -297,4 +242,3 @@ const TicTacToe = ({ user }) => {
 };
 
 export default TicTacToe;
-

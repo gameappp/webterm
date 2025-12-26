@@ -8,12 +8,14 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { getSocket } from "@/lib/socket";
+import BetSelectionModal from "@/components/games/BetSelectionModal";
 
 const socket = getSocket();
 
 const RockPaperScissors = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [gameInfo, setGameInfo] = useState({});
+  const [isBetModalOpen, setIsBetModalOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -52,12 +54,33 @@ const RockPaperScissors = ({ user }) => {
       }
     );
 
-    return () => socket.off();
+    socket.on("betMismatch", ({ message }) => {
+      setLoading(false);
+      toast.error(message || "مبلغ شرط با حریف مطابقت ندارد", {
+        duration: 3000,
+        style: {
+          borderRadius: "10px",
+          background: "#040e1c",
+          color: "#fff",
+          fontSize: "14px",
+        },
+      });
+    });
+
+    return () => {
+      socket.off("gameFound");
+      socket.off("betMismatch");
+    };
   }, []);
 
-  const findGameHandler = () => {
+  const handleBetSelected = (betAmount, isFreeGame) => {
     setLoading(true);
-    socket.emit("findGame", { userId: user._id });
+    setIsBetModalOpen(false);
+    socket.emit("findGame", { betAmount, isFreeGame });
+  };
+
+  const findGameHandler = () => {
+    setIsBetModalOpen(true);
   };
 
   const cancelGameFindingHandler = () => {
@@ -66,11 +89,18 @@ const RockPaperScissors = ({ user }) => {
     socket.emit("cancelGame");
   };
 
-  const isYou = gameInfo?.playerTurn?.userId === user?._id ? "شما" : "حریف";
+  const playerTurnLabel = gameInfo?.playerTurn?.userId === user?._id ? "شما" : "حریف";
+  const opponentLabel = gameInfo?.opponent?.userId === user?._id ? "شما" : "حریف";
 
   return (
     <>
       <Toaster />
+      <BetSelectionModal
+        isOpen={isBetModalOpen}
+        onClose={() => setIsBetModalOpen(false)}
+        onBetSelected={handleBetSelected}
+        gameType="rps"
+      />
 
       {(loading || gameInfo?.roomId) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
@@ -131,7 +161,7 @@ const RockPaperScissors = ({ user }) => {
                   </h3>
 
                   <div className="flex items-center gap-8">
-                    {/* you */}
+                    {/* playerTurn */}
                     <div className="flex flex-col items-center gap-2 slide-up-2">
                       <div className="relative">
                         <div className="absolute -inset-1 rounded-2xl bg-blueColor/40 blur-md" />
@@ -143,7 +173,7 @@ const RockPaperScissors = ({ user }) => {
                           className="relative size-16 rounded-2xl border border-white/10 shadow-lg"
                         />
                       </div>
-                      <span className="text-[11px] text-gray-400">{isYou}</span>
+                      <span className="text-[11px] text-gray-400">{playerTurnLabel}</span>
                       <span className="text-xs font-medium text-white">
                         {gameInfo?.playerTurn?.nickName}
                       </span>
@@ -166,7 +196,7 @@ const RockPaperScissors = ({ user }) => {
                           className="relative size-16 rounded-2xl border border-white/10 shadow-lg"
                         />
                       </div>
-                      <span className="text-[11px] text-gray-400">{isYou}</span>
+                      <span className="text-[11px] text-gray-400">{opponentLabel}</span>
                       <span className="text-xs font-medium text-white">
                         {gameInfo?.opponent?.nickName}
                       </span>

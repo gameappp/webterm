@@ -7,10 +7,13 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { getSocket } from "@/lib/socket";
+import { useUser } from "@/store/useUser";
+import GameChat from "@/components/games/GameChat";
 
 const socket = getSocket();
 
 const TicTacToeGame = ({ roomId, roomInfo, user }) => {
+  const { refreshBalance } = useUser();
   if (!roomInfo || !roomInfo.opponent || !user) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -117,6 +120,11 @@ const TicTacToeGame = ({ roomId, roomInfo, user }) => {
       } else {
         setGameResult("you lose");
       }
+
+      // Refresh balance after game ends
+      setTimeout(() => {
+        refreshBalance();
+      }, 1000);
     });
 
     socket.on("tttOpponentDisconnected", ({ message }) => {
@@ -425,6 +433,9 @@ const TicTacToeGame = ({ roomId, roomInfo, user }) => {
           </div>
         )}
       </div>
+
+      {/* Game Chat */}
+      <GameChat roomId={roomId} gameType="tictactoe" />
     </div>
   );
 };
