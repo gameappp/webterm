@@ -2,7 +2,23 @@
 
 A fully-featured web-based terminal using Python/FastAPI backend with real-time WebSocket communication and xterm.js frontend.
 
+WebTerm is particularly useful for accessing remote machines through a web browser, eliminating the need for dedicated SSH clients or terminal applications. 
+
 ![WebTerm UI](assets/webterm-ui.png)
+
+Here are some common use cases:
+
+- **Remote Server Access**: Install WebTerm on a remote server and access a full terminal session from any device with a web browser. This is especially useful when working from machines where installing an SSH client isn't possible or convenient.
+
+- **Development Environments**: Access your remote development environment (cloud VMs, dev containers, or headless servers) directly from a browser tab. No need to configure SSH keys or remember connection strings—just bookmark the URL.
+
+- **Mobile & Tablet Access**: Need to quickly check logs or run a command on your server from your phone or tablet? WebTerm provides a touch-friendly terminal interface that works on any device with a modern browser.
+
+- **Firewall-Friendly Access**: WebTerm uses standard HTTP/WebSocket protocols (ports 80/443), making it easier to access terminals in environments where SSH port 22 might be blocked or restricted.
+
+- **Shared Access & Demos**: Provide temporary terminal access to team members or demonstrate server configurations without sharing SSH credentials—just share a URL with an authentication token.
+
+- **Browser-Based Workflows**: Integrate terminal access into browser-based workflows, dashboards, or internal tools without requiring users to switch to a separate terminal application.
 
 ## Features
 
