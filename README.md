@@ -17,6 +17,14 @@ A fully-featured web-based terminal using Python/FastAPI backend with real-time 
 
 ## Installation
 
+You can install webterm using pip:
+
+```bash
+pip install webterm
+```
+
+or bleeding edge:
+
 ```bash
 # Clone the repository
 git clone https://github.com/abhishekkrthakur/webterm.git
@@ -193,5 +201,5 @@ pip install -e ".[dev]"
 webterm --reload
 
 # Run linting
-flake8 src/
+make style && make quality
 ```
